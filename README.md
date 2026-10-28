@@ -1,10 +1,38 @@
-# BLOUB Dynamic Island POC
+# Bloub Avatar Lab — Offline iPhone Experiment (v2)
 
-Offline native iOS Live Activity test: Start -> Update +20% -> End.
-No OpenClaw or Craft connection, no Apple Push, no credentials.
+**No OpenClaw, Craft, Pilot, servers, remote agent tools, APNs, or production credentials.**
+This is an on-device UI experiment using the same Native SwiftUI / ActivityKit / WidgetKit implementation that passed the first iPhone test.
 
-Build: push these files to a GitHub repository, use Actions > Build Bloub Island POC, download 'BloubIslandPOC-unsigned-IPA', extract IPA from downloaded artifact.
+## What this build tests
 
-Install: on Windows, use https://sideloadly.io/ with free Apple Account and a USB-connected Dynamic-Island iPhone (iOS 17+). If installation strips or rejects the embedded Widget extension, treat the test as failed and keep the error logs. Free signing expires after 7 days.
+- **In-app Bloub avatar:** six real Bloub-04 sprite sheets, 144 original frames per state, playing at ~12 fps while the app is open; subtle SwiftUI 3D tilt and floating motion (not a 3D mesh).
+- **Dynamic Island:** compact, minimal, expanded (long-press), status changes, different original Bloub avatar artwork, progress, an Attention alert using ActivityKit.
+- **Lock Screen:** Live Activity layout and static Bloub Lock Screen widgets (circular, rectangular, inline).
+- **Home Screen:** small and medium Bloub widgets — **static snapshots** by iOS design, not continuously animated widgets.
+- **Local Notifications:** request permission, send a simulated banner after two seconds, two notification actions, and original Bloub avatar attachment for notification expansion.
 
-Pass criteria: custom Bloub face appears on Dynamic Island and Lock Screen; progress updates 10% -> 30%; expanded view works; End dismisses activity. No pass until tested on real iPhone.
+## Test on a real iPhone
+
+1. Upgrade by installing the new IPA with Sideloadly using the **same** Apple account and bundle ID as v1. If the first version has a running Live Activity, tap End in the old app first.
+2. Open **Bloub Avatar Lab**. Select Working, Approval, Completed, Sleeping, Error, Idle. Verify the character animates inside the app.
+3. Under **Dynamic Island**, tap Start, return to Home Screen, long-press Island, tap +20%, try Attention / big alert. iOS chooses whether/when to transiently expand the island. You **cannot** force a permanent large Island.
+4. Tap Enable Notifications and Send test banner. When presented, long-press the banner for the Bloub image. Allow notifications in Settings if prompted. You may also test from Home Screen.
+5. Start Live Activity, lock the iPhone. Check the Lock Screen. On Home Screen, long-press a blank area → Edit → Add Widget → search for Bloub. Add small/medium widget. For Lock Screen, customize Lock Screen → Add Widgets → Bloub.
+6. Tap Stop Live Activity to finish the experiment.
+
+## iOS limits
+
+- Dynamic Island and Live Activity animations are system-managed and short, **not** continuous 3D or sprite loops.
+- Actual animation loops only run inside the app. WidgetKit snapshots are not continuous video.
+- Local notifications need permission; presentation, size and timing are controlled by iOS and Focus settings.
+- Free Apple Account sideload installs need refreshing (typically within 7 days) and may impose extension/signing limitations.
+- 3D tilt is a SwiftUI visual effect, **not** a RealityKit 3D character.
+- The first step proves app behavior only. There is no real connection to agent processes.
+
+## Build
+
+GitHub Actions workflow **Build Bloub Island POC** builds on the hosted macOS runner, verifies both app and widget extension metadata, then packages a **new unsigned IPA**. Install on Windows using Sideloadly.
+
+## Original art
+
+Uses original Bloub-04 sprite sheets in the local `sileo-standalone-demo/public/bloub` folder. The files were copied into this experimental iOS project; the source demo was not modified.

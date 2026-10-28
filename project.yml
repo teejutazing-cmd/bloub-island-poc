@@ -17,9 +17,13 @@ targets:
     info:
       path: BloubIsland/Info.plist
       properties:
-        CFBundleDisplayName: Bloub Island POC
+        CFBundleDisplayName: Bloub Avatar Lab
         NSSupportsLiveActivities: true
         LSRequiresIPhoneOS: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.bloub.island.poc
+            CFBundleURLSchemes:
+              - bloub
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc

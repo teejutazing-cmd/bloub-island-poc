@@ -13,7 +13,7 @@ permissions:
 jobs:
   ios-unsigned:
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
@@ -25,7 +25,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project BloubIslandPOC.xcodeproj -scheme BloubIsland -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/BloubDerived" CODE_SIGNING_ALLOWED=NO build | tee build.log
-      - name: Verify compiled Live Activity configuration
+      - name: Verify compiled native app, widgets and Live Activity
         shell: bash
         run: |
           python3 - <<'PY'
@@ -35,28 +35,29 @@ jobs:
           ext = app / "PlugIns/BloubIslandWidget.appex"
           assert app.is_dir(), "Missing app bundle"
           assert ext.is_dir(), "Missing embedded widget"
-          with (app / "Info.plist").open("rb") as f:
-              host = plistlib.load(f)
-          with (ext / "Info.plist").open("rb") as f:
-              widget = plistlib.load(f)
-          assert host.get("NSSupportsLiveActivities") is True, "Host app lacks NSSupportsLiveActivities"
-          assert widget.get("NSExtension", {}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension", "Invalid WidgetKit extension"
-          print("PASS: compiled app supports Live Activities and embeds valid WidgetKit extension")
+          with (app / "Info.plist").open("rb") as f: host = plistlib.load(f)
+          with (ext / "Info.plist").open("rb") as f: widget = plistlib.load(f)
+          assert host.get("NSSupportsLiveActivities") is True, "Host lacks NSSupportsLiveActivities"
+          assert widget.get("NSExtension",{}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension", "Invalid extension"
+          assert any("bloub" in str(row).lower() for row in host.get("CFBundleURLTypes", [])), "Missing widget URL scheme"
+          assert (app / "Assets.car").is_file(), "App asset catalog not built"
+          assert (ext / "Assets.car").is_file(), "Widget asset catalog not built"
+          print("PASS: Live Activity, Home/Lock widgets, sprite asset catalogs and URL scheme")
+          print("App files:", sorted(p.name for p in app.iterdir())[:35])
           PY
-      - name: Package and verify widget
+      - name: Package IPA
         shell: bash
         run: |
           set -euo pipefail
           APP="$RUNNER_TEMP/BloubDerived/Build/Products/Release-iphoneos/BloubIsland.app"
-          test -d "$APP"
           test -d "$APP/PlugIns/BloubIslandWidget.appex"
           mkdir -p Payload
           cp -R "$APP" Payload/
-          zip -qr BloubIslandPOC-unsigned.ipa Payload
+          zip -qr BloubAvatarLab-v2-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: BloubIslandPOC-unsigned-IPA
-          path: BloubIslandPOC-unsigned.ipa
+          name: BloubAvatarLab-v2-unsigned-IPA
+          path: BloubAvatarLab-v2-unsigned.ipa
           retention-days: 7
       - if: failure()
         uses: actions/upload-artifact@v4
