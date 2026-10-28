@@ -252,7 +252,7 @@ private struct BloubMotion: View {
     @State private var floatUp = false
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { timeline in
+        TimelineView(.periodic(from: .now, by: 1.0 / 12.0)) { timeline in
             let frame = (Int(timeline.date.timeIntervalSinceReferenceDate * 12) % 144 + 144) % 144
             ZStack {
                 Circle()
@@ -263,6 +263,10 @@ private struct BloubMotion: View {
                     .frame(width: 190, height: 190)
                     .offset(y: floatUp ? -7 : 7)
                     .rotation3DEffect(.degrees(floatUp ? 7 : -7), axis: (x: 0.8, y: 1, z: 0))
+                Text("SPRITE FRAME \(frame + 1) / 144")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.cyan)
+                    .offset(y: 105)
             }
         }
         .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: floatUp)

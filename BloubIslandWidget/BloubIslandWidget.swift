@@ -32,6 +32,9 @@ struct BloubLiveActivityWidget: Widget {
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
             HStack(spacing: 14) {
                 BloubStill(mood: mood, size: 76)
+                    .id(context.state.mood)
+                    .transition(.opacity.combined(with: .scale(scale: 0.75)))
+                    .animation(.easeInOut(duration: 0.45), value: context.state.mood)
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text("BLOUB").font(.caption.monospaced().weight(.bold)).tracking(2)
@@ -57,6 +60,9 @@ struct BloubLiveActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
                         BloubStill(mood: mood, size: 34)
+                            .id(context.state.mood)
+                            .transition(.opacity.combined(with: .scale(scale: 0.75)))
+                            .animation(.easeInOut(duration: 0.45), value: context.state.mood)
                         Text("Bloub").font(.headline.weight(.semibold))
                     }
                 }
@@ -81,10 +87,14 @@ struct BloubLiveActivityWidget: Widget {
                 }
             } compactLeading: {
                 BloubStill(mood: mood, size: 24)
+                    .id(context.state.mood)
+                    .transition(.opacity.combined(with: .scale(scale: 0.75)))
+                    .animation(.easeInOut(duration: 0.45), value: context.state.mood)
             } compactTrailing: {
                 Text("\(context.state.progress)%")
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(mood.accent)
+                    .contentTransition(.numericText())
             } minimal: {
                 BloubStill(mood: mood, size: 23)
             }
