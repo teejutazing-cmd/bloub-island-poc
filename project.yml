@@ -43,6 +43,8 @@ targets:
     info:
       path: BloubIslandWidget/Info.plist
       properties:
+        CFBundleDisplayName: Bloub Widgets
+        CFBundleName: Bloub Widgets
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
@@ -58,6 +60,8 @@ targets:
     info:
       path: BloubNotificationContent/Info.plist
       properties:
+        CFBundleDisplayName: Bloub Animated Alert
+        CFBundleName: Bloub Notification
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).BloubNotificationViewController"

@@ -41,6 +41,9 @@ jobs:
           with (app / "Info.plist").open("rb") as f: host = plistlib.load(f)
           with (ext / "Info.plist").open("rb") as f: widget = plistlib.load(f)
           with (notify / "Info.plist").open("rb") as f: rich = plistlib.load(f)
+          for label, info in (("app", host), ("widget", widget), ("notification", rich)):
+              assert isinstance(info.get("CFBundleDisplayName"), str) and info["CFBundleDisplayName"].strip(), f"{label}: missing CFBundleDisplayName (iOS install rejects this)"
+              assert isinstance(info.get("CFBundleIdentifier"), str) and info["CFBundleIdentifier"].strip(), f"{label}: missing CFBundleIdentifier"
           assert rich.get("NSExtension",{}).get("NSExtensionPointIdentifier") == "com.apple.usernotifications.content-extension", "Invalid notification extension"
           assert rich.get("NSExtension",{}).get("NSExtensionAttributes",{}).get("UNNotificationExtensionCategory") == "BLOUB_DEMO", "Missing Bloub category"
           assert any(notify.glob("bloub-04-*.png")), "Missing notification sprite sheets"
