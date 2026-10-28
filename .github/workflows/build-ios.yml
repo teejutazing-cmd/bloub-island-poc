@@ -1,0 +1,48 @@
+name: Build Bloub Island POC
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'project.yml'
+      - 'BloubIsland/**'
+      - 'BloubIslandWidget/**'
+      - 'Shared/**'
+      - '.github/workflows/build-ios.yml'
+permissions:
+  contents: read
+jobs:
+  ios-unsigned:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate --spec project.yml
+      - name: Build without signing
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project BloubIslandPOC.xcodeproj -scheme BloubIsland -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/BloubDerived" CODE_SIGNING_ALLOWED=NO build | tee build.log
+      - name: Package and verify widget
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/BloubDerived/Build/Products/Release-iphoneos/BloubIsland.app"
+          test -d "$APP"
+          test -d "$APP/PlugIns/BloubIslandWidget.appex"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qr BloubIslandPOC-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BloubIslandPOC-unsigned-IPA
+          path: BloubIslandPOC-unsigned.ipa
+          retention-days: 7
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore

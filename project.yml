@@ -1,0 +1,38 @@
+name: BloubIslandPOC
+options:
+  minimumXcodeGenVersion: 2.38.0
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+    TARGETED_DEVICE_FAMILY: '1'
+targets:
+  BloubIsland:
+    type: application
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - path: BloubIsland
+      - path: Shared
+    info:
+      path: BloubIsland/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc
+        PRODUCT_NAME: BloubIsland
+    dependencies:
+      - target: BloubIslandWidget
+        embed: true
+  BloubIslandWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - path: BloubIslandWidget
+      - path: Shared
+    info:
+      path: BloubIslandWidget/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.widget
+        PRODUCT_NAME: BloubIslandWidget
