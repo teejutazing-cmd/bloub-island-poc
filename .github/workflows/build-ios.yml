@@ -25,6 +25,24 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project BloubIslandPOC.xcodeproj -scheme BloubIsland -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/BloubDerived" CODE_SIGNING_ALLOWED=NO build | tee build.log
+      - name: Verify compiled Live Activity configuration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, plistlib
+          from pathlib import Path
+          app = Path(os.environ["RUNNER_TEMP"]) / "BloubDerived/Build/Products/Release-iphoneos/BloubIsland.app"
+          ext = app / "PlugIns/BloubIslandWidget.appex"
+          assert app.is_dir(), "Missing app bundle"
+          assert ext.is_dir(), "Missing embedded widget"
+          with (app / "Info.plist").open("rb") as f:
+              host = plistlib.load(f)
+          with (ext / "Info.plist").open("rb") as f:
+              widget = plistlib.load(f)
+          assert host.get("NSSupportsLiveActivities") is True, "Host app lacks NSSupportsLiveActivities"
+          assert widget.get("NSExtension", {}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension", "Invalid WidgetKit extension"
+          print("PASS: compiled app supports Live Activities and embeds valid WidgetKit extension")
+          PY
       - name: Package and verify widget
         shell: bash
         run: |

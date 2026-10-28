@@ -16,6 +16,10 @@ targets:
       - path: Shared
     info:
       path: BloubIsland/Info.plist
+      properties:
+        CFBundleDisplayName: Bloub Island POC
+        NSSupportsLiveActivities: true
+        LSRequiresIPhoneOS: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc
@@ -32,6 +36,9 @@ targets:
       - path: Shared
     info:
       path: BloubIslandWidget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.widget
