@@ -53,7 +53,7 @@ struct BloubLiveActivityWidget: Widget {
             .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
-            DynamicIsland {
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
                         BloubStill(mood: mood, size: 34)
