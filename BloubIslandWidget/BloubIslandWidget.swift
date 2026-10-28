@@ -31,9 +31,8 @@ struct BloubLiveActivityWidget: Widget {
         ActivityConfiguration(for: BloubAttributes.self) { context in
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
             HStack(spacing: 14) {
-                BloubStill(mood: mood, size: 76, frame: context.state.pose)
-                    .id("\(context.state.mood)-\(context.state.pose)")
-                    .transition(.opacity.combined(with: .scale(scale: 0.75)))
+                BloubLiveAvatar(mood: mood, size: 76,
+                                pose: context.state.pose, morphFrame: context.state.morphFrame)
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text("BLOUB").font(.caption.monospaced().weight(.bold)).tracking(2)
@@ -58,9 +57,8 @@ struct BloubLiveActivityWidget: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
-                        BloubStill(mood: mood, size: 34, frame: context.state.pose)
-                            .id("\(context.state.mood)-\(context.state.pose)")
-                            .transition(.opacity.combined(with: .scale(scale: 0.75)))
+                        BloubLiveAvatar(mood: mood, size: 34,
+                                        pose: context.state.pose, morphFrame: context.state.morphFrame)
                         Text("Bloub").font(.headline.weight(.semibold))
                     }
                 }
@@ -70,7 +68,8 @@ struct BloubLiveActivityWidget: Widget {
                         .foregroundStyle(mood.accent)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(mood == .approval ? "● YOUR ATTENTION NEEDED" : context.state.detail)
+                    Text(context.state.morphFrame >= 0 ? "● BLOUB MORPH · 24 ORIGINAL FRAMES" :
+                         mood == .approval ? "● YOUR ATTENTION NEEDED" : context.state.detail)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(mood == .approval ? .orange : .secondary)
                         .lineLimit(1)
@@ -84,17 +83,16 @@ struct BloubLiveActivityWidget: Widget {
                     .padding(.horizontal, 8)
                 }
             } compactLeading: {
-                BloubStill(mood: mood, size: 24, frame: context.state.pose)
-                    .id("\(context.state.mood)-\(context.state.pose)")
-                    .transition(.opacity.combined(with: .scale(scale: 0.75)))
+                BloubLiveAvatar(mood: mood, size: 24,
+                                pose: context.state.pose, morphFrame: context.state.morphFrame)
             } compactTrailing: {
                 Text("\(context.state.progress)%")
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(mood.accent)
                     .contentTransition(.numericText())
             } minimal: {
-                BloubStill(mood: mood, size: 23, frame: context.state.pose)
-                    .id("\(context.state.mood)-\(context.state.pose)")
+                BloubLiveAvatar(mood: mood, size: 23,
+                                pose: context.state.pose, morphFrame: context.state.morphFrame)
             }
             .keylineTint(mood.accent)
         }

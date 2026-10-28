@@ -29,6 +29,7 @@ final class BloubLab: ObservableObject {
     @Published var mood: BloubMood = .working
     @Published var progress = 10
     @Published var pose = 0
+    @Published var morphFrame = -1
     @Published var running = false
     @Published var notificationsAllowed = false
     @Published var attentionCountdown = 0
@@ -44,6 +45,7 @@ final class BloubLab: ObservableObject {
             progress = activity.content.state.progress
             mood = BloubMood(rawValue: activity.content.state.mood) ?? .working
             pose = activity.content.state.pose
+            morphFrame = activity.content.state.morphFrame
             message = "Live Activity resumed"
         }
     }
@@ -58,7 +60,8 @@ final class BloubLab: ObservableObject {
                         mood == .error ? "Something needs attention" :
                         mood == .recent ? "Task finished" :
                         "Offline simulation",
-                pose: pose
+                pose: pose,
+                morphFrame: morphFrame
             ),
             staleDate: nil,
             relevanceScore: mood == .approval || mood == .error ? 100 : 50
@@ -75,6 +78,7 @@ final class BloubLab: ObservableObject {
             return
         }
         progress = 10
+        morphFrame = -1
         do {
             activity = try Activity<BloubAttributes>.request(
                 attributes: BloubAttributes(agentName: "Bloub"),
@@ -91,6 +95,7 @@ final class BloubLab: ObservableObject {
     func choose(_ selection: BloubMood) {
         mood = selection
         pose = (pose + 1) % 5
+        morphFrame = -1
         message = "\(selection.title) · pose \(pose) selected"
         if running { refresh() }
     }
@@ -99,6 +104,7 @@ final class BloubLab: ObservableObject {
         if !running { start() }
         guard running else { return }
         pose = (pose + 1) % 5
+        morphFrame = -1
         message = "Sent avatar pose \(pose) to Island / Lock Screen"
         refresh()
     }
@@ -107,6 +113,7 @@ final class BloubLab: ObservableObject {
         if !running { start(); return }
         progress = progress >= 100 ? 10 : min(progress + 20, 100)
         pose = (pose + 1) % 5
+        morphFrame = -1
         message = "Progress: \(progress)% · avatar pose \(pose)"
         refresh()
     }
@@ -150,6 +157,7 @@ final class BloubLab: ObservableObject {
 
         mood = .working
         pose = 1
+        morphFrame = -1
         refresh()
         attentionCountdown = 10
         message = "10 seconds: swipe to Home now, then watch the Island"
@@ -189,6 +197,7 @@ final class BloubLab: ObservableObject {
         guard let activity else { return }
         mood = .working
         pose = 0
+        morphFrame = -1
         refresh()
         attentionCountdown = 10
         message = "Pose parade starts in 10 seconds — swipe Home now"
@@ -228,12 +237,66 @@ final class BloubLab: ObservableObject {
         }
     }
 
+    // ATTEMPT a 24-frame ORIGINAL sprite animation on the real Dynamic Island.
+    // Live Activity refreshes are controlled/coalesced by iOS; requesting 12 FPS
+    // does NOT guarantee that the system renders all 24 frames.
+    func morphInTwoSecondsAfterTenSeconds() {
+        cancelScheduledAttention()
+        if !running { start() }
+        guard let activity else { return }
+        mood = .working
+        pose = 0
+        morphFrame = 0
+        refresh()
+        attentionCountdown = 10
+        message = "Circle → triangle: 24 original frames in 10s. Swipe Home now."
+
+        backgroundAttentionID = UIApplication.shared.beginBackgroundTask(
+            withName: "BloubOriginalSpriteMorph2s",
+            expirationHandler: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.pendingAttention?.cancel()
+                    self.pendingAttention = nil
+                    self.attentionCountdown = 0
+                    self.message = "iOS ended the background morph before completion"
+                    self.releaseBackgroundAttention()
+                }
+            }
+        )
+        pendingAttention = Task { [weak self] in
+            for remaining in stride(from: 9, through: 0, by: -1) {
+                do { try await Task.sleep(for: .seconds(1)) }
+                catch { return }
+                guard let self, !Task.isCancelled else { return }
+                self.attentionCountdown = remaining
+            }
+            guard let self, !Task.isCancelled else { return }
+
+            // Frame data is precompiled in the WidgetKit asset catalog (0...23).
+            // Each is taken unchanged from the source Bloub-04 working sprite.
+            for frame in 0..<24 {
+                guard !Task.isCancelled else { break }
+                self.morphFrame = frame
+                await activity.update(self.makeContent())
+                if frame < 23 {
+                    do { try await Task.sleep(for: .milliseconds(83)) }
+                    catch { break }
+                }
+            }
+            self.pendingAttention = nil
+            self.message = "24 frames requested; Island may show fewer (iOS coalescing)"
+            self.releaseBackgroundAttention()
+        }
+    }
+
     func attention() {
         cancelScheduledAttention()
         if !running { start() }
         guard running else { return }
         mood = .approval
         pose = 4
+        morphFrame = -1
         refresh(alert: true)
     }
 
@@ -261,7 +324,7 @@ final class BloubLab: ObservableObject {
         }
     }
 
-    func sendBanner(delay: TimeInterval = 2) {
+    func sendBanner(delay: TimeInterval = 2, morph: Bool = false) {
         Task {
             let center = UNUserNotificationCenter.current()
             let approved: Bool
@@ -274,14 +337,15 @@ final class BloubLab: ObservableObject {
             guard approved else { message = "Allow notifications in Settings > Bloub"; return }
             notificationsAllowed = true
             let content = UNMutableNotificationContent()
-            content.title = "Bloub · \(mood.title)"
-            content.subtitle = "Offline agent preview"
+            content.title = morph ? "Bloub · Circle → Triangle" : "Bloub · \(mood.title)"
+            content.subtitle = morph ? "24 original frames · 2 seconds" : "Offline agent preview"
             content.body = mood == .approval
                 ? "A simulated worker needs your approval."
                 : "Bloub has an update. Open the notification to inspect."
             content.sound = .default
             content.categoryIdentifier = "BLOUB_DEMO"
-            content.userInfo = ["bloubMood": mood.rawValue]
+            content.userInfo = ["bloubMood": morph ? "working" : mood.rawValue,
+                                "bloubMorph": morph]
 
             // Add a real Bloub avatar image for expanded notification previews.
             if let image = Bundle.main.url(forResource: "bloub-notification", withExtension: "png") {
@@ -457,6 +521,9 @@ struct ControlView: View {
                         LabButton(label: "NEXT Bloub pose on Island", symbol: "figure.dance") {
                             lab.nextIslandPose()
                         }
+                        LabButton(label: "24-FRAME MORPH / 2s · Go Home in 10s", symbol: "sparkles") {
+                            lab.morphInTwoSecondsAfterTenSeconds()
+                        }
                         LabButton(label: "5-pose Island parade in 10s", symbol: "play.rectangle.on.rectangle") {
                             lab.poseParadeAfterTenSeconds()
                         }
@@ -476,7 +543,7 @@ struct ControlView: View {
                         }
                         ProgressView(value: Double(lab.progress), total: 100)
                             .tint(lab.mood.accent)
-                        Text("Changing a pose swaps genuine sprite frames in the Island and Lock Screen. iOS handles short transitions (not a continuous sprite loop). Delayed alert is best-effort while backgrounded.")
+                        Text("24-FRAME MORPH sends the original circle-to-triangle frames over 2 seconds, after a 10-second delay. iOS may merge rapid Live Activity updates. The expanded morph notification plays the complete 24-frame sequence locally.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
 
@@ -484,13 +551,16 @@ struct ControlView: View {
                         LabButton(label: "Enable Notifications", symbol: "bell.badge") {
                             lab.requestNotifications()
                         }
+                        LabButton(label: "MORPH notification · 24 frames / 2s", symbol: "film.stack") {
+                            lab.sendBanner(delay: 10, morph: true)
+                        }
                         LabButton(label: "Banner in 10s · Go Home", symbol: "timer") {
                             lab.sendBanner(delay: 10)
                         }
                         LabButton(label: "Instant banner (2s)", symbol: "paperplane.fill") {
                             lab.sendBanner()
                         }
-                        Text("Tap Banner in 10s, swipe Home, then LONG-PRESS the notification. Custom Bloub sprite animation is available in expanded notifications only; the collapsed banner is iOS-owned.")
+                        Text("For a guaranteed 2-second sprite playback test, tap MORPH notification, swipe Home, then LONG-PRESS the delivered banner. The compact banner cannot run custom frame animations.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
 

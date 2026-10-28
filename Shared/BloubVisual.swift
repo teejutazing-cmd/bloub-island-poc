@@ -39,6 +39,49 @@ enum BloubMood: String, CaseIterable, Identifiable {
     }
 }
 
+// The original Bloub working sheet contains the exact circle-to-triangle morph.
+// These 24 assets are source frames [0, 3, ... 69], not generated geometric substitutes.
+// System-managed Live Activity updates may merge frames. This view does not run a timer.
+struct BloubMorphFrame: View {
+    let frame: Int
+    let size: CGFloat
+
+    private var imageName: String {
+        let index = max(0, min(frame, 23))
+        return index < 10 ? "bloub-morph-0\(index)" : "bloub-morph-\(index)"
+    }
+
+    var body: some View {
+        Image(imageName)
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityLabel("Original Bloub morph frame \(frame + 1) of 24")
+    }
+}
+
+struct BloubLiveAvatar: View {
+    let mood: BloubMood
+    let size: CGFloat
+    let pose: Int
+    let morphFrame: Int
+
+    var body: some View {
+        Group {
+            if morphFrame >= 0 {
+                BloubMorphFrame(frame: morphFrame, size: size)
+                    .id("morph-\(morphFrame)")
+                    .transition(.identity)
+            } else {
+                BloubStill(mood: mood, size: size, frame: pose)
+                    .id("pose-\(mood.rawValue)-\(pose)")
+                    .transition(.opacity)
+            }
+        }
+    }
+}
+
 // Discrete sprite poses can animate between Live Activity STATE UPDATES.
 // WidgetKit cannot freely run TimelineView or an arbitrary 144-frame loop here.
 struct BloubStill: View {

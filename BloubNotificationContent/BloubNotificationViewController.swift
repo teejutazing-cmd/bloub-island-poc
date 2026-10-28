@@ -60,6 +60,8 @@ final class BloubNotificationViewController: UIViewController, UNNotificationCon
 
         sprite.stopAnimating()
         sprite.animationImages = nil
+        let isMorph = notification.request.content.userInfo["bloubMorph"] as? Bool ?? false
+        status.text = isMorph ? "CIRCLE → TRIANGLE · 24 REAL FRAMES / 2s" : "ORIGINAL SPRITE · 144 FRAMES / 12s"
         guard let sourceURL = Bundle.main.url(forResource: "bloub-04-\(mood)", withExtension: "png"),
               let sheet = UIImage(contentsOfFile: sourceURL.path)?.cgImage else {
             subheading.text = "Bloub \(mood.capitalized)"
@@ -69,18 +71,19 @@ final class BloubNotificationViewController: UIViewController, UNNotificationCon
         // Original sprite: 144 frames, each 64x64, one horizontal 9216x64 sheet.
         // Animate only inside the expanded notification view; not in Dynamic Island.
         var frames: [UIImage] = []
-        frames.reserveCapacity(144)
-        for index in 0..<144 {
+        let sourceIndices = isMorph ? (0..<24).map { $0 * 3 } : Array(0..<144)
+        frames.reserveCapacity(sourceIndices.count)
+        for index in sourceIndices {
             let rect = CGRect(x: index * 64, y: 0, width: 64, height: 64)
             if let slice = sheet.cropping(to: rect) {
                 frames.append(UIImage(cgImage: slice, scale: 1, orientation: .up))
             }
         }
         guard !frames.isEmpty else { return }
-        sprite.image = frames[0]
+        sprite.image = isMorph ? frames[frames.count - 1] : frames[0]
         sprite.animationImages = frames
-        sprite.animationDuration = 12
-        sprite.animationRepeatCount = 0
+        sprite.animationDuration = isMorph ? 2 : 12
+        sprite.animationRepeatCount = isMorph ? 1 : 0
         sprite.startAnimating()
     }
 

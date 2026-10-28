@@ -7,6 +7,8 @@ struct BloubAttributes: ActivityAttributes {
         var mood: String
         var detail: String
         var pose: Int
+        // -1 = normal avatar; 0...23 = one original source morph frame.
+        var morphFrame: Int
     }
 
     var agentName: String
