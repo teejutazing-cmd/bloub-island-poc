@@ -30,8 +30,11 @@ final class BloubLab: ObservableObject {
     @Published var progress = 10
     @Published var running = false
     @Published var notificationsAllowed = false
+    @Published var attentionCountdown = 0
 
     private var activity: Activity<BloubAttributes>?
+    private var pendingAttention: Task<Void, Never>?
+    private var backgroundAttentionID: UIBackgroundTaskIdentifier = .invalid
 
     init() {
         activity = Activity<BloubAttributes>.activities.first
@@ -104,17 +107,77 @@ final class BloubLab: ObservableObject {
             : nil
         Task {
             await activity.update(payload, alertConfiguration: config)
-            if alert { message = "Island alert sent — iOS decides presentation" }
+            if alert {
+                message = "Island alert sent — iOS decides presentation"
+                releaseBackgroundAttention()
+            }
+        }
+    }
+
+    private func releaseBackgroundAttention() {
+        guard backgroundAttentionID != .invalid else { return }
+        let id = backgroundAttentionID
+        backgroundAttentionID = .invalid
+        UIApplication.shared.endBackgroundTask(id)
+    }
+
+    private func cancelScheduledAttention() {
+        pendingAttention?.cancel()
+        pendingAttention = nil
+        attentionCountdown = 0
+        releaseBackgroundAttention()
+    }
+
+    // A short, user-triggered background execution window lets you swipe Home
+    // before this local ActivityKit update. It is NOT a durable scheduler.
+    func attentionAfterTenSeconds() {
+        cancelScheduledAttention()
+        if !running { start() }
+        guard activity != nil else { return }
+
+        mood = .working
+        refresh()
+        attentionCountdown = 10
+        message = "10 seconds: swipe to Home now, then watch the Island"
+
+        backgroundAttentionID = UIApplication.shared.beginBackgroundTask(
+            withName: "BloubIslandDelayedAttention",
+            expirationHandler: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.pendingAttention?.cancel()
+                    self.pendingAttention = nil
+                    self.attentionCountdown = 0
+                    self.message = "iOS background time expired before alert"
+                    self.releaseBackgroundAttention()
+                }
+            }
+        )
+
+        pendingAttention = Task { [weak self] in
+            for remaining in stride(from: 9, through: 0, by: -1) {
+                do { try await Task.sleep(for: .seconds(1)) }
+                catch { return }
+                guard let self, !Task.isCancelled else { return }
+                self.attentionCountdown = remaining
+            }
+            guard let self, !Task.isCancelled else { return }
+            self.mood = .approval
+            self.pendingAttention = nil
+            self.refresh(alert: true)
         }
     }
 
     func attention() {
+        cancelScheduledAttention()
         if !running { start() }
+        guard running else { return }
         mood = .approval
         refresh(alert: true)
     }
 
     func finish() {
+        cancelScheduledAttention()
         guard let activity else { message = "No active activity"; return }
         let content = makeContent()
         Task {
@@ -137,7 +200,7 @@ final class BloubLab: ObservableObject {
         }
     }
 
-    func sendBanner() {
+    func sendBanner(delay: TimeInterval = 2) {
         Task {
             let center = UNUserNotificationCenter.current()
             let approved: Bool
@@ -172,11 +235,11 @@ final class BloubLab: ObservableObject {
             let request = UNNotificationRequest(
                 identifier: UUID().uuidString,
                 content: content,
-                trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
+                trigger: UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
             )
             do {
                 try await center.add(request)
-                message = "Local banner scheduled in 2 seconds"
+                message = "Local notification scheduled in \(Int(delay)) seconds"
             } catch {
                 message = "Notification failed: \(error.localizedDescription)"
             }
@@ -325,7 +388,15 @@ struct ControlView: View {
                             LabButton(label: "Start", symbol: "play.fill") { lab.start() }
                             LabButton(label: "+20%", symbol: "plus.circle") { lab.advance() }
                         }
-                        LabButton(label: "Attention / big alert", symbol: "exclamationmark.bubble.fill") {
+                        LabButton(label: "Island alert in 10s · Go Home", symbol: "timer") {
+                            lab.attentionAfterTenSeconds()
+                        }
+                        if lab.attentionCountdown > 0 {
+                            Text("Alert in \(lab.attentionCountdown)s — swipe up to Home now")
+                                .font(.subheadline.monospacedDigit().weight(.bold))
+                                .foregroundStyle(.orange)
+                        }
+                        LabButton(label: "Instant alert (comparison)", symbol: "exclamationmark.bubble.fill") {
                             lab.attention()
                         }
                         LabButton(label: "Stop Live Activity", symbol: "stop.fill") {
@@ -333,7 +404,7 @@ struct ControlView: View {
                         }
                         ProgressView(value: Double(lab.progress), total: 100)
                             .tint(lab.mood.accent)
-                        Text("Long-press the Island to expand. The system decides whether an alert expands it automatically.")
+                        Text("The Island normally isn't visible over its own app. Delayed alert uses a short background task; iOS may still suppress expansion.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
 
@@ -341,10 +412,13 @@ struct ControlView: View {
                         LabButton(label: "Enable Notifications", symbol: "bell.badge") {
                             lab.requestNotifications()
                         }
-                        LabButton(label: "Send test banner", symbol: "paperplane.fill") {
+                        LabButton(label: "Banner in 10s · Go Home", symbol: "timer") {
+                            lab.sendBanner(delay: 10)
+                        }
+                        LabButton(label: "Instant banner (2s)", symbol: "paperplane.fill") {
                             lab.sendBanner()
                         }
-                        Text("Works without internet or APNs. Long-press a banner to preview Bloub artwork.")
+                        Text("Unlike an Island alert, this scheduled local banner works even when Bloub is in the background, subject to iOS notification settings.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
 
