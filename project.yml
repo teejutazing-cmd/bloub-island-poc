@@ -31,6 +31,8 @@ targets:
     dependencies:
       - target: BloubIslandWidget
         embed: true
+      - target: BloubNotificationContent
+        embed: true
   BloubIslandWidget:
     type: app-extension
     platform: iOS
@@ -47,3 +49,24 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.widget
         PRODUCT_NAME: BloubIslandWidget
+  BloubNotificationContent:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - path: BloubNotificationContent
+    info:
+      path: BloubNotificationContent/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).BloubNotificationViewController"
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: BLOUB_DEMO
+            UNNotificationExtensionDefaultContentHidden: true
+            UNNotificationExtensionInitialContentSizeRatio: 0.73
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.notification
+        PRODUCT_NAME: BloubNotificationContent
+        APPLICATION_EXTENSION_API_ONLY: YES

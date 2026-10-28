@@ -6,6 +6,7 @@ on:
       - 'project.yml'
       - 'BloubIsland/**'
       - 'BloubIslandWidget/**'
+      - 'BloubNotificationContent/**'
       - 'Shared/**'
       - '.github/workflows/build-ios.yml'
 permissions:
@@ -33,16 +34,22 @@ jobs:
           from pathlib import Path
           app = Path(os.environ["RUNNER_TEMP"]) / "BloubDerived/Build/Products/Release-iphoneos/BloubIsland.app"
           ext = app / "PlugIns/BloubIslandWidget.appex"
+          notify = app / "PlugIns/BloubNotificationContent.appex"
           assert app.is_dir(), "Missing app bundle"
           assert ext.is_dir(), "Missing embedded widget"
+          assert notify.is_dir(), "Missing notification content extension"
           with (app / "Info.plist").open("rb") as f: host = plistlib.load(f)
           with (ext / "Info.plist").open("rb") as f: widget = plistlib.load(f)
+          with (notify / "Info.plist").open("rb") as f: rich = plistlib.load(f)
+          assert rich.get("NSExtension",{}).get("NSExtensionPointIdentifier") == "com.apple.usernotifications.content-extension", "Invalid notification extension"
+          assert rich.get("NSExtension",{}).get("NSExtensionAttributes",{}).get("UNNotificationExtensionCategory") == "BLOUB_DEMO", "Missing Bloub category"
+          assert any(notify.glob("bloub-04-*.png")), "Missing notification sprite sheets"
           assert host.get("NSSupportsLiveActivities") is True, "Host lacks NSSupportsLiveActivities"
           assert widget.get("NSExtension",{}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension", "Invalid extension"
           assert any("bloub" in str(row).lower() for row in host.get("CFBundleURLTypes", [])), "Missing widget URL scheme"
           assert (app / "Assets.car").is_file(), "App asset catalog not built"
           assert (ext / "Assets.car").is_file(), "Widget asset catalog not built"
-          print("PASS: Live Activity, Home/Lock widgets, sprite asset catalogs and URL scheme")
+          print("PASS: Live Activity, Home/Lock widgets, Rich Notification content extension, sprite assets")
           print("App files:", sorted(p.name for p in app.iterdir())[:35])
           PY
       - name: Package IPA
@@ -51,13 +58,14 @@ jobs:
           set -euo pipefail
           APP="$RUNNER_TEMP/BloubDerived/Build/Products/Release-iphoneos/BloubIsland.app"
           test -d "$APP/PlugIns/BloubIslandWidget.appex"
+          test -d "$APP/PlugIns/BloubNotificationContent.appex"
           mkdir -p Payload
           cp -R "$APP" Payload/
-          zip -qr BloubAvatarLab-v2-unsigned.ipa Payload
+          zip -qr BloubAvatarLab-v3-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: BloubAvatarLab-v2-unsigned-IPA
-          path: BloubAvatarLab-v2-unsigned.ipa
+          name: BloubAvatarLab-v3-unsigned-IPA
+          path: BloubAvatarLab-v3-unsigned.ipa
           retention-days: 7
       - if: failure()
         uses: actions/upload-artifact@v4

@@ -31,10 +31,9 @@ struct BloubLiveActivityWidget: Widget {
         ActivityConfiguration(for: BloubAttributes.self) { context in
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
             HStack(spacing: 14) {
-                BloubStill(mood: mood, size: 76)
-                    .id(context.state.mood)
+                BloubStill(mood: mood, size: 76, frame: context.state.pose)
+                    .id("\(context.state.mood)-\(context.state.pose)")
                     .transition(.opacity.combined(with: .scale(scale: 0.75)))
-                    .animation(.easeInOut(duration: 0.45), value: context.state.mood)
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text("BLOUB").font(.caption.monospaced().weight(.bold)).tracking(2)
@@ -59,10 +58,9 @@ struct BloubLiveActivityWidget: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
-                        BloubStill(mood: mood, size: 34)
-                            .id(context.state.mood)
+                        BloubStill(mood: mood, size: 34, frame: context.state.pose)
+                            .id("\(context.state.mood)-\(context.state.pose)")
                             .transition(.opacity.combined(with: .scale(scale: 0.75)))
-                            .animation(.easeInOut(duration: 0.45), value: context.state.mood)
                         Text("Bloub").font(.headline.weight(.semibold))
                     }
                 }
@@ -72,9 +70,9 @@ struct BloubLiveActivityWidget: Widget {
                         .foregroundStyle(mood.accent)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(context.state.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(mood == .approval ? "● YOUR ATTENTION NEEDED" : context.state.detail)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(mood == .approval ? .orange : .secondary)
                         .lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -86,17 +84,17 @@ struct BloubLiveActivityWidget: Widget {
                     .padding(.horizontal, 8)
                 }
             } compactLeading: {
-                BloubStill(mood: mood, size: 24)
-                    .id(context.state.mood)
+                BloubStill(mood: mood, size: 24, frame: context.state.pose)
+                    .id("\(context.state.mood)-\(context.state.pose)")
                     .transition(.opacity.combined(with: .scale(scale: 0.75)))
-                    .animation(.easeInOut(duration: 0.45), value: context.state.mood)
             } compactTrailing: {
                 Text("\(context.state.progress)%")
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(mood.accent)
                     .contentTransition(.numericText())
             } minimal: {
-                BloubStill(mood: mood, size: 23)
+                BloubStill(mood: mood, size: 23, frame: context.state.pose)
+                    .id("\(context.state.mood)-\(context.state.pose)")
             }
             .keylineTint(mood.accent)
         }
@@ -105,30 +103,44 @@ struct BloubLiveActivityWidget: Widget {
 
 struct StaticBloubEntry: TimelineEntry {
     let date: Date
+    let mood: BloubMood
+    let pose: Int
 }
 
 struct StaticBloubProvider: TimelineProvider {
-    func placeholder(in context: Context) -> StaticBloubEntry { StaticBloubEntry(date: Date()) }
-    func getSnapshot(in context: Context, completion: @escaping (StaticBloubEntry) -> Void) {
-        completion(StaticBloubEntry(date: Date()))
+    func placeholder(in context: Context) -> StaticBloubEntry {
+        StaticBloubEntry(date: Date(), mood: .working, pose: 0)
     }
+
+    func getSnapshot(in context: Context, completion: @escaping (StaticBloubEntry) -> Void) {
+        completion(placeholder(in: context))
+    }
+
     func getTimeline(in context: Context, completion: @escaping (Timeline<StaticBloubEntry>) -> Void) {
-        completion(Timeline(entries: [StaticBloubEntry(date: Date())], policy: .never))
+        // Slow avatar pose rotation. WidgetKit owns refresh scheduling and can defer entries.
+        let moods: [BloubMood] = [.working, .recent, .sleeping, .unknown]
+        let now = Date()
+        let entries = (0..<4).map { index in
+            StaticBloubEntry(date: now.addingTimeInterval(Double(index) * 20 * 60),
+                             mood: moods[index], pose: index + 1)
+        }
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
 private struct HomeBloubView: View {
+    let entry: StaticBloubEntry
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
         switch family {
         case .systemMedium:
             HStack(spacing: 14) {
-                BloubStill(mood: .working, size: 104)
+                BloubStill(mood: entry.mood, size: 104, frame: entry.pose)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("BLOUB").font(.caption.monospaced().weight(.bold)).tracking(2)
                     Text("Avatar Lab").font(.headline)
-                    Text("Tap to explore moods")
+                    Text("\(entry.mood.title) · scheduled pose")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -137,7 +149,7 @@ private struct HomeBloubView: View {
             .containerBackground(Color(red: 0.035, green: 0.07, blue: 0.11), for: .widget)
         default:
             VStack(spacing: 5) {
-                BloubStill(mood: .working, size: 94)
+                BloubStill(mood: entry.mood, size: 94, frame: entry.pose)
                 Text("BLOUB").font(.caption.monospaced().bold()).tracking(1.5)
                 Text("OFFLINE LAB").font(.system(size: 9)).foregroundStyle(.secondary)
             }
@@ -149,8 +161,8 @@ private struct HomeBloubView: View {
 struct BloubHomeWidget: Widget {
     let kind = "BloubHome"
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: StaticBloubProvider()) { _ in
-            HomeBloubView()
+        StaticConfiguration(kind: kind, provider: StaticBloubProvider()) { entry in
+            HomeBloubView(entry: entry)
                 .widgetURL(URL(string: "bloub://lab"))
         }
         .configurationDisplayName("Bloub Avatar")
@@ -160,16 +172,17 @@ struct BloubHomeWidget: Widget {
 }
 
 private struct LockBloubView: View {
+    let entry: StaticBloubEntry
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
         switch family {
         case .accessoryCircular:
-            BloubStill(mood: .working, size: 46)
+            BloubStill(mood: entry.mood, size: 46, frame: entry.pose)
                 .containerBackground(.clear, for: .widget)
         case .accessoryRectangular:
             HStack(spacing: 8) {
-                BloubStill(mood: .working, size: 37)
+                BloubStill(mood: entry.mood, size: 37, frame: entry.pose)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("BLOUB").font(.caption.bold())
                     Text("Avatar Lab").font(.caption2)
@@ -186,8 +199,8 @@ private struct LockBloubView: View {
 struct BloubLockWidget: Widget {
     let kind = "BloubLock"
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: StaticBloubProvider()) { _ in
-            LockBloubView()
+        StaticConfiguration(kind: kind, provider: StaticBloubProvider()) { entry in
+            LockBloubView(entry: entry)
                 .widgetURL(URL(string: "bloub://lab"))
         }
         .configurationDisplayName("Bloub Lock Screen")

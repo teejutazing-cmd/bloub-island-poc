@@ -1,39 +1,34 @@
-# Bloub Avatar Lab — Offline iPhone Experiment (v2)
+# Bloub Outside-App Animation Lab v3
 
-**No OpenClaw, Craft, Pilot, servers, remote agent tools, APNs, or production credentials.**
-This is an on-device UI experiment using the same Native SwiftUI / ActivityKit / WidgetKit implementation that passed the first iPhone test.
+**Purpose:** discover the practical maximum of Bloub avatar movement on iOS surfaces outside the foreground app. This remains a 100% local, offline UI experiment. No OpenClaw, Craft, Pilot, remote agents, APNs, background server or Apple paid account.
 
-## What this build tests
+## What is new in v3
 
-- **In-app Bloub avatar:** six real Bloub-04 sprite sheets, 144 original frames per state, playing at ~12 fps while the app is open; subtle SwiftUI 3D tilt and floating motion (not a 3D mesh).
-- **Dynamic Island:** compact, minimal, expanded (long-press), status changes, different original Bloub avatar artwork, progress, an Attention alert using ActivityKit.
-- **Lock Screen:** Live Activity layout and static Bloub Lock Screen widgets (circular, rectangular, inline).
-- **Home Screen:** small and medium Bloub widgets — **static snapshots** by iOS design, not continuously animated widgets.
-- **Local Notifications:** request permission, send a simulated banner after two seconds, two notification actions, and original Bloub avatar attachment for notification expansion.
+- **Dynamic Island + Lock Screen Live Activity:** five real sprite poses per mood (source frames 0, 3, 48, 72, 120), rendered using original Bloub 04 art. Press **NEXT Bloub pose on Island** to issue a discrete update; system-managed image transitions may animate.
+- **5-pose Island parade in 10s:** start Live Activity, trigger delayed parade, immediately swipe to the Home Screen. The app uses a short background execution request and submits five successive poses at ~0.9s intervals. **This may be throttled or coalesced by iOS**; the experiment measures that limitation and is not a guaranteed animation loop.
+- **Island alert in 10s:** send a single, high-relevance attention update after exiting the app. iOS decides if the expanded Island is displayed.
+- **Rich expanded notification:** includes a dedicated Notification Content Extension using UIKit and original 144-frame Bloub 04 sprite sheets for six emotions. Press **Banner in 10s · Go Home**, leave the app, and **long-press the delivered banner**: the expanded notification attempts to play a 12 FPS animated Bloub. The *collapsed* banner remains system-drawn and is not freely animated.
+- **Home / Lock Screen Widgets:** iOS WidgetKit timeline with four mood/pose snapshots spaced 20 minutes apart. iOS owns update timing and may defer/coalesce snapshots; no continuous loop. Lock Screen **Live Activity** changes with the real ActivityKit pose separately.
+- **In-app frame counter:** retained only as a technical diagnostic, not as the primary feature.
 
-## Test on a real iPhone
+## On-device test sequence
 
-1. Upgrade by installing the new IPA with Sideloadly using the **same** Apple account and bundle ID as v1. If the first version has a running Live Activity, tap End in the old app first.
-2. Open **Bloub Avatar Lab**. Select Working, Approval, Completed, Sleeping, Error, Idle. Verify the character animates inside the app.
-3. Under **Dynamic Island**, tap **Start** then tap **Island alert in 10s · Go Home**. Immediately swipe Home (without force-quitting Bloub) and observe the Island around the 10-second mark. A short `UIApplication.beginBackgroundTask` keeps the test active briefly but **iOS may suspend/expire it** and **iOS controls whether an expanded Island appears**. Use **Instant alert (comparison)** while in-app only as a control; the system may hide its Island presentation behind the foreground app.
-4. Tap Enable Notifications, then **Banner in 10s · Go Home**, and immediately swipe Home. This schedules a separate **local notification** that does not depend on the app remaining active. Long-press the banner to inspect Bloub artwork. Focus/notification settings can suppress banners. You may use the 2-second immediate banner for comparison.
-5. Start Live Activity, lock the iPhone. Check the Lock Screen. On Home Screen, long-press a blank area → Edit → Add Widget → search for Bloub. Add small/medium widget. For Lock Screen, customize Lock Screen → Add Widgets → Bloub.
-6. Tap Stop Live Activity to finish the experiment.
+1. Stop any active Live Activity in the previous version. Install this v3 IPA via Sideloadly using the **same Apple Account and app ID**.
+2. Open Bloub Avatar Lab → **Start** → swipe Home → verify compact Island. Return to app, tap **NEXT Bloub pose on Island**, and return Home. Repeat to see new poses.
+3. Tap **5-pose Island parade in 10s**, then immediately swipe Home. Watch Island. Possible outcomes: several frame changes, only the last, or none (iOS controls local update delivery). Do not force-quit the app.
+4. Tap **Island alert in 10s**, swipe Home. Watch for temporary expanded Island + sound/haptic. This is still system controlled.
+5. Allow Notifications. Tap **Banner in 10s · Go Home**, then swipe Home. When the banner appears, **long-press it** to reveal the custom expanded notification and play Bloub animation. If it shows only the default expansion, the rich content extension may not have loaded or signed correctly; capture screenshot.
+6. Lock iPhone while a Live Activity is active to check changing Bloub pose. Add small/medium Bloub Home Widget and circular/rectangular Lock Widget to test slowly scheduled pose updates.
 
-## iOS limits
+## Important platform limits
 
-- Dynamic Island and Live Activity animations are system-managed and short, **not** continuous 3D or sprite loops.
-- Actual animation loops only run inside the app. WidgetKit snapshots are not continuous video.
-- Local notifications need permission; presentation, size and timing are controlled by iOS and Focus settings. The 10-second local notification is system scheduled; the 10-second Island update is a **best-effort short background task**, not a guaranteed scheduler or APNs update.
-- Dynamic Island does not appear in the normal way above its own foreground app. To test transient expansion, send the delayed alert and leave Bloub for Home immediately.
-- Free Apple Account sideload installs need refreshing (typically within 7 days) and may impose extension/signing limitations.
-- 3D tilt is a SwiftUI visual effect, **not** a RealityKit 3D character.
-- The first step proves app behavior only. There is no real connection to agent processes.
+- Apple documents **max 2 seconds** for a single Live Activity/Widget transition. These are state-change animations, not an arbitrary timer-driven Sprite loop. The system ignores `.animation(...)` in Live Activity View builders and owns the timing.
+- Collapsed Notification Banners cannot use custom continuously animated UIViewControllers. Apple's Notification Content Extension becomes visible on **expanded** notification only.
+- Home/Lock widgets have timelines with system-controlled refresh and are not continuous sprite video.
+- Background execution requested for a local 10s burst is **best-effort**. Real unattended background delivery normally needs platform-approved update paths; this offline POC intentionally has no APNs/backend.
+- A free Apple Account may refuse to sign an additional notification extension even when the previous WidgetKit extension worked. If Sideloadly errors, record the exact error; revert to the last working IPA rather than weakening security.
+- Real iPhone tests are the source of truth for every rendering claim.
 
-## Build
+## Source and build
 
-GitHub Actions workflow **Build Bloub Island POC** builds on the hosted macOS runner, verifies both app and widget extension metadata, then packages a **new unsigned IPA**. Install on Windows using Sideloadly.
-
-## Original art
-
-Uses original Bloub-04 sprite sheets in the local `sileo-standalone-demo/public/bloub` folder. The files were copied into this experimental iOS project; the source demo was not modified.
+Source sprites copied (not modified) from `sileo-standalone-demo/public/bloub`. iOS uses SwiftUI, ActivityKit, WidgetKit, UIKit, UserNotificationsUI. GitHub Actions builds and verifies the app plus **two embedded extensions**, and packages an unsigned IPA to be signed and installed with Sideloadly.

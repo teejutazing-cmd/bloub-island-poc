@@ -6,6 +6,7 @@ struct BloubAttributes: ActivityAttributes {
         var progress: Int
         var mood: String
         var detail: String
+        var pose: Int
     }
 
     var agentName: String

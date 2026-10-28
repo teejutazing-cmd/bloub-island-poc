@@ -28,6 +28,7 @@ final class BloubLab: ObservableObject {
     @Published var message = "Ready for an offline experiment"
     @Published var mood: BloubMood = .working
     @Published var progress = 10
+    @Published var pose = 0
     @Published var running = false
     @Published var notificationsAllowed = false
     @Published var attentionCountdown = 0
@@ -42,6 +43,7 @@ final class BloubLab: ObservableObject {
             running = true
             progress = activity.content.state.progress
             mood = BloubMood(rawValue: activity.content.state.mood) ?? .working
+            pose = activity.content.state.pose
             message = "Live Activity resumed"
         }
     }
@@ -55,7 +57,8 @@ final class BloubLab: ObservableObject {
                 detail: mood == .approval ? "Your decision needed" :
                         mood == .error ? "Something needs attention" :
                         mood == .recent ? "Task finished" :
-                        "Offline simulation"
+                        "Offline simulation",
+                pose: pose
             ),
             staleDate: nil,
             relevanceScore: mood == .approval || mood == .error ? 100 : 50
@@ -87,14 +90,24 @@ final class BloubLab: ObservableObject {
 
     func choose(_ selection: BloubMood) {
         mood = selection
-        message = "\(selection.title) avatar selected"
+        pose = (pose + 1) % 5
+        message = "\(selection.title) · pose \(pose) selected"
         if running { refresh() }
+    }
+
+    func nextIslandPose() {
+        if !running { start() }
+        guard running else { return }
+        pose = (pose + 1) % 5
+        message = "Sent avatar pose \(pose) to Island / Lock Screen"
+        refresh()
     }
 
     func advance() {
         if !running { start(); return }
         progress = progress >= 100 ? 10 : min(progress + 20, 100)
-        message = "Progress: \(progress)%"
+        pose = (pose + 1) % 5
+        message = "Progress: \(progress)% · avatar pose \(pose)"
         refresh()
     }
 
@@ -136,6 +149,7 @@ final class BloubLab: ObservableObject {
         guard activity != nil else { return }
 
         mood = .working
+        pose = 1
         refresh()
         attentionCountdown = 10
         message = "10 seconds: swipe to Home now, then watch the Island"
@@ -163,8 +177,54 @@ final class BloubLab: ObservableObject {
             }
             guard let self, !Task.isCancelled else { return }
             self.mood = .approval
+            self.pose = 4
             self.pendingAttention = nil
             self.refresh(alert: true)
+        }
+    }
+
+    func poseParadeAfterTenSeconds() {
+        cancelScheduledAttention()
+        if !running { start() }
+        guard let activity else { return }
+        mood = .working
+        pose = 0
+        refresh()
+        attentionCountdown = 10
+        message = "Pose parade starts in 10 seconds — swipe Home now"
+
+        // This is a best-effort short background experiment, not a persistent loop.
+        backgroundAttentionID = UIApplication.shared.beginBackgroundTask(
+            withName: "BloubIslandPoseParade",
+            expirationHandler: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.pendingAttention?.cancel()
+                    self.pendingAttention = nil
+                    self.attentionCountdown = 0
+                    self.message = "iOS ended the short background test"
+                    self.releaseBackgroundAttention()
+                }
+            }
+        )
+        pendingAttention = Task { [weak self] in
+            for remaining in stride(from: 9, through: 0, by: -1) {
+                do { try await Task.sleep(for: .seconds(1)) }
+                catch { return }
+                guard let self, !Task.isCancelled else { return }
+                self.attentionCountdown = remaining
+            }
+            guard let self, !Task.isCancelled else { return }
+            for next in [1, 2, 3, 4, 0] {
+                guard !Task.isCancelled else { break }
+                self.pose = next
+                await activity.update(self.makeContent())
+                do { try await Task.sleep(for: .milliseconds(900)) }
+                catch { break }
+            }
+            self.pendingAttention = nil
+            self.message = "Sent 5 discrete Island poses; iOS may coalesce updates"
+            self.releaseBackgroundAttention()
         }
     }
 
@@ -173,6 +233,7 @@ final class BloubLab: ObservableObject {
         if !running { start() }
         guard running else { return }
         mood = .approval
+        pose = 4
         refresh(alert: true)
     }
 
@@ -220,6 +281,7 @@ final class BloubLab: ObservableObject {
                 : "Bloub has an update. Open the notification to inspect."
             content.sound = .default
             content.categoryIdentifier = "BLOUB_DEMO"
+            content.userInfo = ["bloubMood": mood.rawValue]
 
             // Add a real Bloub avatar image for expanded notification previews.
             if let image = Bundle.main.url(forResource: "bloub-notification", withExtension: "png") {
@@ -392,6 +454,12 @@ struct ControlView: View {
                             LabButton(label: "Start", symbol: "play.fill") { lab.start() }
                             LabButton(label: "+20%", symbol: "plus.circle") { lab.advance() }
                         }
+                        LabButton(label: "NEXT Bloub pose on Island", symbol: "figure.dance") {
+                            lab.nextIslandPose()
+                        }
+                        LabButton(label: "5-pose Island parade in 10s", symbol: "play.rectangle.on.rectangle") {
+                            lab.poseParadeAfterTenSeconds()
+                        }
                         LabButton(label: "Island alert in 10s · Go Home", symbol: "timer") {
                             lab.attentionAfterTenSeconds()
                         }
@@ -408,11 +476,11 @@ struct ControlView: View {
                         }
                         ProgressView(value: Double(lab.progress), total: 100)
                             .tint(lab.mood.accent)
-                        Text("The Island normally isn't visible over its own app. Delayed alert uses a short background task; iOS may still suppress expansion.")
+                        Text("Changing a pose swaps genuine sprite frames in the Island and Lock Screen. iOS handles short transitions (not a continuous sprite loop). Delayed alert is best-effort while backgrounded.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
 
-                    LabPanel(heading: "03 · Notification banner", info: "Local notifications · expandable avatar preview · action buttons") {
+                    LabPanel(heading: "03 · ANIMATED notification", info: "Long-press the delivered banner to open Bloub's animated custom notification view") {
                         LabButton(label: "Enable Notifications", symbol: "bell.badge") {
                             lab.requestNotifications()
                         }
@@ -422,7 +490,7 @@ struct ControlView: View {
                         LabButton(label: "Instant banner (2s)", symbol: "paperplane.fill") {
                             lab.sendBanner()
                         }
-                        Text("Unlike an Island alert, this scheduled local banner works even when Bloub is in the background, subject to iOS notification settings.")
+                        Text("Tap Banner in 10s, swipe Home, then LONG-PRESS the notification. Custom Bloub sprite animation is available in expanded notifications only; the collapsed banner is iOS-owned.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
 
@@ -437,7 +505,7 @@ struct ControlView: View {
                             Text("Long-press Home Screen → Edit → Add Widget → Bloub")
                         }
                         .font(.caption)
-                        Text("Widgets show a static Bloub snapshot; continuous animation runs inside this app only.")
+                        Text("Home/Lock Widgets rotate snapshots on a slow timeline. The Live Activity changes discrete poses when updated; no widget sprite loop is permitted.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                 }

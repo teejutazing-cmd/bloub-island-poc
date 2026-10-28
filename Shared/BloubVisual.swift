@@ -39,18 +39,20 @@ enum BloubMood: String, CaseIterable, Identifiable {
     }
 }
 
-// Rasterized stills from the existing Bloub 04 sprite sheets.
-// WidgetKit / ActivityKit own their update animations; do not loop sprite animation in a widget.
+// Discrete sprite poses can animate between Live Activity STATE UPDATES.
+// WidgetKit cannot freely run TimelineView or an arbitrary 144-frame loop here.
 struct BloubStill: View {
     let mood: BloubMood
     let size: CGFloat
+    var frame: Int = 0
 
     var body: some View {
-        Image("bloub-still-\(mood.rawValue)")
+        Image(frame == 0 ? "bloub-still-\(mood.rawValue)" :
+               "bloub-pose-\(mood.rawValue)-\(max(0, min(frame, 4)))")
             .resizable()
             .interpolation(.none)
             .scaledToFit()
             .frame(width: size, height: size)
-            .accessibilityLabel("Bloub \(mood.title)")
+            .accessibilityLabel("Bloub \(mood.title) pose \(frame)")
     }
 }
