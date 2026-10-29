@@ -23,6 +23,35 @@ jobs:
         run: brew install xcodegen
       - name: Generate native Xcode project
         run: xcodegen generate --spec project.yml
+      - name: Build ARM64 Simulator app for Appetize
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project BloubIslandPOC.xcodeproj \
+            -scheme BloubIsland -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/BloubAppetizeDerived" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build \
+            > "$ARTIFACT_DIR/xcodebuild-appetize.log" 2>&1 || {
+              tail -110 "$ARTIFACT_DIR/xcodebuild-appetize.log"
+              exit 1
+            }
+          APP="$RUNNER_TEMP/BloubAppetizeDerived/Build/Products/Debug-iphonesimulator/BloubIsland.app"
+          test -d "$APP/PlugIns/BloubIslandWidget.appex"
+          test -d "$APP/PlugIns/BloubNotificationContent.appex"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist"
+          cd "$(dirname "$APP")"
+          zip -qr "$ARTIFACT_DIR/Bloub-Appetize-ARM64-Simulator.zip" "$(basename "$APP")"
+          unzip -t "$ARTIFACT_DIR/Bloub-Appetize-ARM64-Simulator.zip" | tail -1
+      - name: Upload Appetize-ready unsigned iOS Simulator build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloub-Appetize-ARM64-Simulator-Build
+          path: sim-artifacts/Bloub-Appetize-ARM64-Simulator.zip
+          if-no-files-found: error
+          retention-days: 7
       - name: Choose available iPhone with Dynamic Island
         id: device
         shell: bash
@@ -49,7 +78,14 @@ jobs:
           ')
           echo "udid=$DEVICE_ID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$DEVICE_ID"
-          xcrun simctl bootstatus "$DEVICE_ID" -b
+          python3 - "$DEVICE_ID" <<'PY'
+          import subprocess, sys
+          try:
+              subprocess.run(["xcrun", "simctl", "bootstatus", sys.argv[1], "-b"],
+                             check=True, timeout=180)
+          except subprocess.TimeoutExpired:
+              print("WARNING: simctl bootstatus timed out; XCTest may still boot the simulator", flush=True)
+          PY
           mkdir -p "$ARTIFACT_DIR"
           xcrun simctl status_bar "$DEVICE_ID" override --time '9:41' --batteryState charged --batteryLevel 100 || true
       - name: Build + run native SwiftUI UI tests on iPhone Simulator
@@ -80,27 +116,6 @@ jobs:
         run: |
           mkdir -p "$ARTIFACT_DIR"
           xcrun simctl io "${{ steps.device.outputs.udid }}" screenshot "$ARTIFACT_DIR/Bloub-final-screen.png" || true
-      - name: Build ARM64 Simulator app for Appetize
-        if: success()
-        shell: bash
-        run: |
-          set -euo pipefail
-          xcodebuild -project BloubIslandPOC.xcodeproj \
-            -scheme BloubIsland -configuration Debug \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/BloubAppetizeDerived" \
-            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build \
-            > "$ARTIFACT_DIR/xcodebuild-appetize.log" 2>&1 || {
-              tail -110 "$ARTIFACT_DIR/xcodebuild-appetize.log"
-              exit 1
-            }
-          APP="$RUNNER_TEMP/BloubAppetizeDerived/Build/Products/Debug-iphonesimulator/BloubIsland.app"
-          test -d "$APP/PlugIns/BloubIslandWidget.appex"
-          test -d "$APP/PlugIns/BloubNotificationContent.appex"
-          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist"
-          cd "$(dirname "$APP")"
-          zip -qr "$ARTIFACT_DIR/Bloub-Appetize-ARM64-Simulator.zip" "$(basename "$APP")"
-          unzip -t "$ARTIFACT_DIR/Bloub-Appetize-ARM64-Simulator.zip" | tail -1
       - name: Upload videos, screenshots, XCTest results and diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -108,12 +123,4 @@ jobs:
           name: Bloub-Native-Simulator-Evidence
           path: sim-artifacts/
           if-no-files-found: warn
-          retention-days: 7
-      - name: Upload Appetize-ready unsigned iOS Simulator build
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Bloub-Appetize-ARM64-Simulator-Build
-          path: sim-artifacts/Bloub-Appetize-ARM64-Simulator.zip
-          if-no-files-found: error
           retention-days: 7
