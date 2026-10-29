@@ -1,8 +1,8 @@
 # Bloub Native iOS — Dynamic Island Alert First
 
-> **CURRENT TEST (outside app only):** read [ISLAND-ONLY-TEST.md](ISLAND-ONLY-TEST.md). The main screen now triggers ActivityKit expanded Island alerts after 8 seconds on Home Screen — NO standard UNNotification banner. The legacy in-app Ultimate Lab is not the current testing priority.
+> **CURRENT TEST (outside app only):** read [ISLAND-ONLY-TEST.md](ISLAND-ONLY-TEST.md). The main screen now triggers ActivityKit expanded Island alerts after 8 seconds on Home Screen — NO standard UNNotification banner. The legacy in-app Ultimate Lab is not the current testing priority. For iPhone device installation use the newly built `artifacts/BloubIslandOnly-iPhone16Pro-unsigned.ipa` (the START-IPHONE16PRO-TEST.cmd launcher selects it).
 
-> **For testing on a physical iPhone 16 Pro:** read [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md) and use the separate verified `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa`. The working v4 IPA is retained as a recovery copy.
+> **For testing on a physical iPhone 16 Pro:** read [ISLAND-ONLY-TEST.md](ISLAND-ONLY-TEST.md) and select `artifacts/BloubIslandOnly-iPhone16Pro-unsigned.ipa`. The prior Ultimate Lab and known-working v4 IPAs are retained as recovery copies.
 
 > **Resume here:** [SESSION-HANDOFF.md](SESSION-HANDOFF.md) records all verified Bloub native iOS work, Windows paths, the working Appetize auto-deploy, CI evidence, limitations and a ready-to-copy new-session prompt. Appetize is **already connected**; do not set it up again without a specific reason.
 

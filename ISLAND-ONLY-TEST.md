@@ -2,9 +2,11 @@
 
 **Main target:** iPhone 16 Pro. **No banner notification** is created by the new Island-only workflow. It uses **ActivityKit's `Activity.update(_:alertConfiguration:)`**, documented by Apple to request an expanded Live Activity presentation in Dynamic Island on supported iPhones. The iOS system decides whether and when it expands; the app cannot force it to appear for every event.
 
+**Build verification — 29 Oct 2026:** iPhone device IPA successfully compiled, packaged and checked in [GitHub run 40883729822](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40883729822). Windows file: `artifacts/BloubIslandOnly-iPhone16Pro-unsigned.ipa`, **1,849,637 bytes**, SHA-256 `55cdf489fa0786eab6d764120967a85fd78fcf85e5b8fc307dfb919af2b38833`. Both WidgetKit and Notification Content extensions plus NSSupportsLiveActivities are present. Appetize Auto-Deploy [run 40883729595](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40883729595) succeeded. This does **not** verify real hardware Island appearance yet.
+
 ## How to test on physical iPhone (most important)
 
-1. Install the **newly rebuilt** unsigned iPhone IPA through Sideloadly with your Apple Account; keep `artifacts/BloubAvatarLab-v4-original-morph-verified.ipa` as a backup. Do not use the older IPA built before this Island-only change.
+1. Install the **newly rebuilt** `artifacts/BloubIslandOnly-iPhone16Pro-unsigned.ipa` through Sideloadly with your Apple Account; keep `artifacts/BloubAvatarLab-v4-original-morph-verified.ipa` as a backup. Do not use the older IPA built before this Island-only change.
 2. Open `Bloub Avatar Lab` → **START ISLAND** if it is not already active. Confirm Live Activities are enabled in iPhone Settings for Bloub.
 3. Tap **⚠️ APPROVAL POPUP · 8s** then **swipe Home immediately**. Keep iPhone unlocked and on Home Screen until the 8-second mark.
 4. Look for an **Expanded Dynamic Island Live Activity** (orange alert text/avatar). This is requested through `AlertConfiguration`, **not** a `UNNotificationRequest` and **not** a standard incoming-notification banner.

@@ -1,6 +1,6 @@
 # Bloub Dynamic Island Alert Lab — iPhone 16 Pro hardware test
 
-> **CURRENT PROCEDURE:** [ISLAND-ONLY-TEST.md](ISLAND-ONLY-TEST.md). This guide's earlier 38 foreground experiments were superseded by the Island-only focus. **Install the newly rebuilt IPA after this update**, not the previous artifact whose hash appears below.
+> **CURRENT PROCEDURE (verified device IPA):** [ISLAND-ONLY-TEST.md](ISLAND-ONLY-TEST.md). Use `artifacts/BloubIslandOnly-iPhone16Pro-unsigned.ipa` (SHA-256 `55cdf489fa0786eab6d764120967a85fd78fcf85e5b8fc307dfb919af2b38833`) via `START-IPHONE16PRO-TEST.cmd`. Device CI [40883729822](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40883729822) passed. All old Ultimate Lab IPA/38-effect instructions below are **historical** and are not the test to follow.
 
 > **Native build readiness (29 Oct 2026).** The latest implemented Bloub app (38 selectable effects + system surface tests) compiled successfully for **iPhone device** and uploaded to Appetize. Native iOS Simulator UI tests passed **3/3** on Xcode 26 in [run 40866761278](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40866761278). This is **NOT yet a claim of physical iPhone installation or verification**. The actual iPhone 16 Pro test must be performed by the user.
 
