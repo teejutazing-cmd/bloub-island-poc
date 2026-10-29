@@ -13,19 +13,28 @@ permissions:
 jobs:
   ios-simulator:
     name: Native iPhone Simulator · UI tests + video + Appetize ZIP
-    runs-on: macos-26-intel
+    runs-on: macos-15-intel
     timeout-minutes: 45
     env:
       DERIVED: /tmp/BloubSimDerived
       ARTIFACT_DIR: ${{ github.workspace }}/sim-artifacts
     steps:
       - uses: actions/checkout@v4
+      - name: Select Xcode 16.4 with iPhone 16 Pro simulator
+        shell: bash
+        run: |
+          if [[ -d /Applications/Xcode_16.4.app/Contents/Developer ]]; then
+            echo 'DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer' >> "$GITHUB_ENV"
+          fi
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Install optional Metal toolchain for shader experiments
+      - name: Ensure Metal shader compiler is available
         run: |
-          xcodebuild -downloadComponent metalToolchain
+          if ! xcrun --find metal >/dev/null 2>&1; then
+            xcodebuild -downloadComponent metalToolchain
+          fi
           xcrun --find metal
+          xcodebuild -version
       - name: Generate native Xcode project
         run: xcodegen generate --spec project.yml
       - name: Build ARM64 Simulator app for Appetize
