@@ -25,6 +25,11 @@ Public GitHub repositories using **standard** macOS runners are not billed for G
 
 GitHub Actions is headless automation, not a live Mac desktop. Simulator results can differ from real iPhone behavior, and user interaction is more convenient using Appetize (subject to its own free-plan limits). The source app's regular behavior and the working v4 IPA are unchanged; the only new app activation is a simulator-only `--bloub-sim-morph` test argument.
 
+## Infrastructure reliability / current UI test status
+
+- [Run 40863013746](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013746) **did not reach UI assertions** because the iPhone 17 Pro iOS 26.4 simulator boot exceeded 180s, and Xcode then reported no available test destination (exit 70). The Simulator app still compiled; the 38-effect Appetize Auto-Deploy and device IPA build passed separately.
+- Updated workflow chooses iPhone 16 Pro if installed, else prefers iPhone 17 Pro with an older installed runtime; waits for boot with a clear failure if still unavailable; checks Xcode destinations and prints retained native test logs. Do not mistake a CI infrastructure failure for app behavior validation.
+
 ## Maintenance
 
 - Code edits on Windows → Git push.

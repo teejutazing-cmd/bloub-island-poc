@@ -65,40 +65,65 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           xcrun simctl list devices available
-          DEVICE_ID=$(xcrun simctl list -j devices available | python3 -c '
-          import json,sys
-          data=json.load(sys.stdin)
-          devices=[d for group in data["devices"].values() for d in group
-                   if d.get("isAvailable") and d.get("udid") and "iPhone" in d.get("name","")]
+          mkdir -p "$ARTIFACT_DIR"
+          xcrun simctl list -j devices available > "$ARTIFACT_DIR/simulator-devices.json"
+          # Prefer the user's iPhone 16 Pro when present. Current macos-26
+          # images often only contain iPhone 17 Pro; prefer the oldest
+          # installed iOS runtime to avoid repeated migration on fresh boot.
+          DEVICE_ID=$(python3 - "$ARTIFACT_DIR/simulator-devices.json" <<'PY'
+          import json, sys, re
+          data=json.load(open(sys.argv[1], encoding="utf-8"))
+          pool=[]
+          for runtime, devices in data["devices"].items():
+              numbers=[int(s) for s in re.findall(r"\d+", runtime)]
+              for device in devices:
+                  if device.get("isAvailable") and device.get("udid") and "iPhone" in device.get("name", ""):
+                      pool.append((device["name"], numbers, runtime, device["udid"]))
           priorities=["iPhone 16 Pro", "iPhone 17 Pro", "iPhone 15 Pro",
                       "iPhone 14 Pro", "iPhone 17", "iPhone 16", "iPhone 15"]
-          for name in priorities:
-              eligible=[d for d in devices if d["name"]==name]
-              if eligible:
-                  print(eligible[0]["udid"])
-                  break
-          else:
-              if not devices:
-                  raise SystemExit("No iOS Simulator runtime / iPhone available")
-              print(devices[0]["udid"])
-          ')
+          pool.sort(key=lambda x:(priorities.index(x[0]) if x[0] in priorities else 99, x[1]))
+          if not pool:
+              raise SystemExit("NO_AVAILABLE_IPHONE_SIMULATOR")
+          name, version, runtime, udid=pool[0]
+          print(f"SIMULATOR_SELECTED={name}; OS={runtime}; UUID={udid}", file=sys.stderr)
+          print(udid)
+          PY
+          )
           echo "udid=$DEVICE_ID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$DEVICE_ID"
           python3 - "$DEVICE_ID" <<'PY'
           import subprocess, sys
           try:
               subprocess.run(["xcrun", "simctl", "bootstatus", sys.argv[1], "-b"],
-                             check=True, timeout=180)
+                             check=True, timeout=420)
           except subprocess.TimeoutExpired:
-              print("WARNING: simctl bootstatus timed out; XCTest may still boot the simulator", flush=True)
+              print("ERROR: simulator failed to finish boot within 420s; aborting UI tests (infrastructure, not app)", flush=True)
+              sys.exit(2)
           PY
-          mkdir -p "$ARTIFACT_DIR"
+          xcrun simctl list devices booted
+          # A device visible to simctl is not necessarily accepted by Xcode.
+          # Fail with actionable logs rather than launching blind (exit 70).
+          SEEN=0
+          for attempt in 1 2 3; do
+            xcodebuild -project BloubIslandPOC.xcodeproj -scheme BloubSimulatorLab \
+              -showdestinations > "$ARTIFACT_DIR/xcode-destinations.log" 2>&1 || true
+            if grep -Fq "$DEVICE_ID" "$ARTIFACT_DIR/xcode-destinations.log"; then
+              SEEN=1; break
+            fi
+            echo "Xcode cannot yet see $DEVICE_ID (attempt $attempt / 3)"
+            sleep 12
+          done
+          cat "$ARTIFACT_DIR/xcode-destinations.log" | tail -45
+          if [[ "$SEEN" != 1 ]]; then
+            echo "::error::Simulator booted but Xcode does not expose it as a test destination"
+            exit 3
+          fi
           xcrun simctl status_bar "$DEVICE_ID" override --time '9:41' --batteryState charged --batteryLevel 100 || true
       - name: Build + run native SwiftUI UI tests on iPhone Simulator
         id: test
         shell: bash
         run: |
-          set -uo pipefail
+          set +e  # Preserve xcodebuild's failure log and let the step report it.
           mkdir -p "$ARTIFACT_DIR"
           xcrun simctl io "${{ steps.device.outputs.udid }}" recordVideo --codec=h264 --force "$ARTIFACT_DIR/Bloub-native-simulator.mp4" > "$ARTIFACT_DIR/recording.log" 2>&1 &
           VIDEO_PID=$!
@@ -113,7 +138,8 @@ jobs:
           CODE=$?
           kill -INT "$VIDEO_PID" 2>/dev/null || true
           wait "$VIDEO_PID" 2>/dev/null || true
-          cat "$ARTIFACT_DIR/xcodebuild-test.log" | tail -110
+          cat "$ARTIFACT_DIR/xcodebuild-test.log" | tail -140
+          if [[ "$CODE" != 0 ]]; then echo "::error::Native XCTest failed with exit $CODE. Full xcodebuild-test.log is in the evidence artifact."; fi
           echo "test_exit=$CODE" >> "$GITHUB_OUTPUT"
           exit "$CODE"
       - name: Capture final simulator screenshot
