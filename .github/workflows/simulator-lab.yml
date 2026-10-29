@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-26-intel
     timeout-minutes: 45
     env:
-      DERIVED: ${{ runner.temp }}/BloubSimDerived
+      DERIVED: /tmp/BloubSimDerived
       ARTIFACT_DIR: ${{ github.workspace }}/sim-artifacts
     steps:
       - uses: actions/checkout@v4
