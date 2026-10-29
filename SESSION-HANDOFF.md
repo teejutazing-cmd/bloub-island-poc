@@ -4,6 +4,19 @@
 >
 > **Bloub เป็น iOS app จริง** (SwiftUI + ActivityKit + WidgetKit + Notification Content Extension) ไม่ใช่เว็บหรือรูป mockup. ระบบ **GitHub Actions → Appetize auto-deploy ใช้งานได้แล้ว**. ยังไม่มี AI agent/backend จริง
 
+## อัปเดตล่าสุด — Ultimate Animation Lab (29 ต.ค. 2026)
+
+- เพิ่ม **Bloub Ultimate Animation Lab** ที่เปิดจากปุ่มในแอปเดิม: 38 selectable effects / 4 modes (**Showcase, Stress, Compare, System**). รายละเอียดครบที่ [ULTIMATE-LAB.md](ULTIMATE-LAB.md)
+- เพิ่ม **Metal shader (warp / color shift)**, **SpriteKit collisions/gravity**, **RealityKit non-AR sphere**, **CoreMotion gyro**, **Core Haptics**, **microphone audio meter**, สังเคราะห์เสียง WAV ภายในแอป, particles, gestures และ FPS monitor
+- Dynamic Island: ทดลอง transition styles 6 แบบผ่าน ActivityKit state updates (ระบบ iOS ไม่รับประกันทุกเฟรม)
+- Expanded Notification: glow/spin/shake/pulse/ripple/glitch/morph ด้วย Core Animation ภายใน Notification Content Extension
+- Home Widget: ปุ่ม **NEXT POSE** ผ่าน App Intent; Control Center / Action Button บน iOS 18+ มี **Bloub Lab Control Widget** สำหรับเปิดแอป (ระบบควบคุมรูปแบบ Animation)
+- ✅ Native iPhone unsigned IPA Build ล่าสุด [40863013726](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013726) ผ่าน. ✅ Auto-Deploy Simulator ไป Appetize ล่าสุด [40863013737](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013737) ผ่าน. Native XCTest รอบล่าสุด [40863013746](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013746): ตรวจสถานะผลทดสอบก่อนสรุป
+- Xcode 26 macOS runner ต้องติดตั้ง `metalToolchain` เพิ่มด้วย `xcodebuild -downloadComponent metalToolchain` ซึ่งเพิ่มไว้ในทั้งสาม workflows แล้ว
+- **ยังไม่ได้ยืนยัน** Control Center/Action Button และ Haptics/Mic/Gyro บน iPhone จริง; ไม่ควรอ้างความลื่นของ Island 24fps/12fps
+- **ยังไม่มี Agent backend จริง**, ยังไม่ใช้เซิร์ฟเวอร์หรือ APNs. รักษา IPA v4 ของเดิมไว้, ไม่ต้องตั้งค่า Appetize Secret ใหม่
+- **Source truth:** GitHub `main`; เปิด [Bloub บน Appetize](https://appetize.io/apps/ios/com.bloub.island.poc) แล้ว Start **session ใหม่** หลัง CI Upload success
+
 ## 1) เป้าหมายและข้อกำหนดที่ตกลงกับผู้ใช้
 
 - พัฒนา **Bloub avatar** ที่ใช้ภาพ/animation ต้นฉบับใน Dynamic Island, Lock Screen, Home/Lock widgets และการแจ้งเตือนบน iOS; ขณะนี้เป็น **offline prototype** และ bot จำลอง
@@ -96,7 +109,7 @@ Auto-Deploy success ครั้งแรก build จาก source commit `18b9
 ## 6) สิ่งที่ยังไม่ได้ทำ / ข้อจำกัด / ระวัง
 
 - **ยังไม่มี AI Agent backend หรือ API เชื่อมกับ bot จริง** — เป็น UI/animation ทดลองเท่านั้น
-- **iPhone 16 Pro** คือ hardware เป้าหมาย แต่ `simulator-lab.yml` **ยังเรียงลำดับ iPhone 17 Pro ก่อน 16 Pro**; ถ้าจะทดสอบตรงรุ่นให้แก้ priorities เป็น `iPhone 16 Pro` ก่อน โดยยอม fallback เมื่อ runner ไม่มีรุ่นดังกล่าว
+- **iPhone 16 Pro** คือ hardware เป้าหมาย; `simulator-lab.yml` **ตั้งให้เลือก iPhone 16 Pro เป็นอันดับแรกแล้ว** โดย fallback ไปอุปกรณ์ที่ Runner มีหากไม่มี 16 Pro
 - ไม่ได้ยืนยันว่า Dynamic Island เล่น 24 frames ได้ลื่นจริง; iOS อาจ throttle/coalesce ActivityKit. ต้องเก็บ screenshot/video/ทดสอบเครื่องจริงเพื่อยืนยัน
 - Appetize cloud simulation อาจ **กระตุก**; ไม่มี native Appetize Windows simulator desktop ที่ช่วยตัดการสตรีม; วิดีโอจาก GitHub CI ดูย้อนหลังลื่นกว่า
 - Appetize free-plan ใช้ session minutes จำกัด; GitHub public repo มีความเสี่ยงหากใส่ความลับหรือไฟล์ส่วนตัวโดยไม่ตั้งใจ
@@ -110,6 +123,7 @@ Auto-Deploy success ครั้งแรก build จาก source commit `18b9
 - [README.md](README.md): animation v4 และวิธีทดสอบแต่ละ iOS surface
 - [AUTO-DEPLOY.md](AUTO-DEPLOY.md): Auto-Deploy + Secret + GitHub Action + แก้ปัญหา
 - [SIMULATOR-LAB.md](SIMULATOR-LAB.md): headless native Simulator, XCTest, video & artifacts
+- [ULTIMATE-LAB.md](ULTIMATE-LAB.md): 38 effects, 4 modes, system control/widget experiments, limitations and sources
 - [project.yml](project.yml): XcodeGen targets, Bundle ID, iOS deployment target
 
 ## 8) ข้อความเริ่ม Session ใหม่ (คัดลอกได้เลย)

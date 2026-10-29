@@ -1,6 +1,6 @@
 # Bloub Ultimate Animation Lab — native iOS experimental suite
 
-Status: **implementation in progress; do not claim a specific build passes until its GitHub Actions run is successful**.
+Status: **Native iPhone build and Appetize Auto-Deploy PASS (29 Oct 2026)**. Verified runs: [device IPA #40863013726](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013726) and [Appetize #40863013737](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013737). Check separate [Simulator UI tests #40863013746](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013746) for current test status. Native build success is not evidence that every special iOS surface renders its animation.
 
 ## Open it
 
