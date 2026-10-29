@@ -1,4 +1,6 @@
-# Bloub Circle → Triangle — Original 2-Second Sprite Experiment (v4)
+# Bloub Native iOS — Ultimate Animation Lab + Original v4
+
+> **For testing on a physical iPhone 16 Pro:** read [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md) and use the separate verified `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa`. The working v4 IPA is retained as a recovery copy.
 
 > **Resume here:** [SESSION-HANDOFF.md](SESSION-HANDOFF.md) records all verified Bloub native iOS work, Windows paths, the working Appetize auto-deploy, CI evidence, limitations and a ready-to-copy new-session prompt. Appetize is **already connected**; do not set it up again without a specific reason.
 

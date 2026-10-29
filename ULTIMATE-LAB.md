@@ -2,6 +2,8 @@
 
 Status: **Native iPhone build and Appetize Auto-Deploy PASS (29 Oct 2026)**. Verified runs: [device IPA #40863013726](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013726) and [Appetize #40863013737](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013737). Native Xcode 26 Simulator UI tests [#40866761278](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40866761278) **PASSED 3/3** after choosing an available older installed simulator runtime and checking Xcode destination readiness. The experimental macOS 15 / Xcode 16.4 run [#40868009706](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40868009706) failed Swift compiler type-checking; the Simulator CI workflow has therefore been restored to the verified macOS 26 runner. This is a smoke test, not frame-rate proof. Native build success is not evidence that every special iOS surface renders its animation.
 
+**Physical iPhone 16 Pro IPA is ready to sign/install with the existing Sideloadly installation**; details in [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md). This does not imply on-device animation effects have been validated yet.
+
 ## Open it
 
 Open Bloub Avatar Lab → tap **OPEN BLOUB ULTIMATE ANIMATION LAB**. This opens a separate fullscreen native SwiftUI test UI; the original v4 controls remain available beneath it. From the lab you can pick four modes:

@@ -11,11 +11,13 @@
 - Dynamic Island: ทดลอง transition styles 6 แบบผ่าน ActivityKit state updates (ระบบ iOS ไม่รับประกันทุกเฟรม)
 - Expanded Notification: glow/spin/shake/pulse/ripple/glitch/morph ด้วย Core Animation ภายใน Notification Content Extension
 - Home Widget: ปุ่ม **NEXT POSE** ผ่าน App Intent; Control Center / Action Button บน iOS 18+ มี **Bloub Lab Control Widget** สำหรับเปิดแอป (ระบบควบคุมรูปแบบ Animation)
-- ✅ Native iPhone unsigned IPA Build [40863013726](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013726) ผ่าน. ✅ Auto-Deploy Simulator ไป Appetize [40863013737](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013737) ผ่าน. ⚠️ ✅ Native XCTest **3/3 PASS** บน Xcode 26 [40866761278](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40866761278) โดยเลือก runtime ที่บูตได้, รอ boot และเช็ก `xcodebuild -showdestinations`. การลอง Xcode 16.4 [40868009706](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40868009706) ล้มเหลวจากข้อจำกัด Swift Compiler; จึงกลับไปใช้ Xcode 26 สำหรับ Simulator Lab
+- ✅ Native iPhone unsigned IPA Build [40863013726](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013726) ผ่าน. ✅ Auto-Deploy Simulator ไป Appetize [40863013737](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013737) ผ่าน. ✅ Native XCTest **3/3 PASS** บน Xcode 26 [40866761278](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40866761278) โดยเลือก runtime ที่บูตได้, รอ boot และเช็ก `xcodebuild -showdestinations`. การลอง Xcode 16.4 [40868009706](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40868009706) ล้มเหลวจากข้อจำกัด Swift Compiler; จึงกลับไปใช้ Xcode 26 สำหรับ Simulator Lab
 - Xcode 26 macOS runner ต้องติดตั้ง `metalToolchain` เพิ่มด้วย `xcodebuild -downloadComponent metalToolchain`; ยังคงใช้ใน IPA/Auto-Deploy ที่ผ่านแล้ว ส่วน Native Simulator XCTest ใช้ macOS 26 Intel / Xcode 26.6 ตามรอบที่ผ่าน 3/3 Tests; Runner อาจไม่มี iPhone 16 Pro จึง fallback เป็น iPhone 17 Pro และเลือก runtime ที่บูตได้
 - **ยังไม่ได้ยืนยัน** Control Center/Action Button และ Haptics/Mic/Gyro บน iPhone จริง; ไม่ควรอ้างความลื่นของ Island 24fps/12fps
 - **ยังไม่มี Agent backend จริง**, ยังไม่ใช้เซิร์ฟเวอร์หรือ APNs. รักษา IPA v4 ของเดิมไว้, ไม่ต้องตั้งค่า Appetize Secret ใหม่
 - **Source truth:** GitHub `main`; เปิด [Bloub บน Appetize](https://appetize.io/apps/ios/com.bloub.island.poc) แล้ว Start **session ใหม่** หลัง CI Upload success
+
+**เตรียมทดลองเครื่องจริง:** ไฟล์ `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa` (SHA-256: `04751ea214826f13168c412f49c1b22f2d70120dfcb47179e417b871ae809f8b`) ผ่านการตรวจ ZIP, Bundle ID และทั้งสอง Extensions บน Windows แล้ว; Sideloadly ติดตั้งแล้วที่ `C:\Users\theej\AppData\Local\Sideloadly\Sideloadly.exe`. คู่มือ: [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md). **ยังไม่ติดตั้ง/ยืนยัน Animation บน iPhone 16 Pro จริง**
 
 ## 1) เป้าหมายและข้อกำหนดที่ตกลงกับผู้ใช้
 
@@ -124,6 +126,7 @@ Auto-Deploy success ครั้งแรก build จาก source commit `18b9
 - [AUTO-DEPLOY.md](AUTO-DEPLOY.md): Auto-Deploy + Secret + GitHub Action + แก้ปัญหา
 - [SIMULATOR-LAB.md](SIMULATOR-LAB.md): headless native Simulator, XCTest, video & artifacts
 - [ULTIMATE-LAB.md](ULTIMATE-LAB.md): 38 effects, 4 modes, system control/widget experiments, limitations and sources
+- [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md): verified device IPA, Sideloadly, hands-on hardware checklist, pass/fail and safety
 - [project.yml](project.yml): XcodeGen targets, Bundle ID, iOS deployment target
 
 ## 8) ข้อความเริ่ม Session ใหม่ (คัดลอกได้เลย)
