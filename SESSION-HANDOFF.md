@@ -17,7 +17,7 @@
 - **ยังไม่มี Agent backend จริง**, ยังไม่ใช้เซิร์ฟเวอร์หรือ APNs. รักษา IPA v4 ของเดิมไว้, ไม่ต้องตั้งค่า Appetize Secret ใหม่
 - **Source truth:** GitHub `main`; เปิด [Bloub บน Appetize](https://appetize.io/apps/ios/com.bloub.island.poc) แล้ว Start **session ใหม่** หลัง CI Upload success
 
-**เตรียมทดลองเครื่องจริง:** ไฟล์ `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa` (SHA-256: `04751ea214826f13168c412f49c1b22f2d70120dfcb47179e417b871ae809f8b`) ผ่านการตรวจ ZIP, Bundle ID และทั้งสอง Extensions บน Windows แล้ว; Sideloadly ติดตั้งแล้วที่ `C:\Users\theej\AppData\Local\Sideloadly\Sideloadly.exe`. คู่มือ: [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md). **ยังไม่ติดตั้ง/ยืนยัน Animation บน iPhone 16 Pro จริง**
+**เตรียมทดลองเครื่องจริง:** ไฟล์ `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa` (SHA-256: `04751ea214826f13168c412f49c1b22f2d70120dfcb47179e417b871ae809f8b`) ผ่านการตรวจ ZIP, Bundle ID และทั้งสอง Extensions บน Windows แล้ว; Sideloadly ติดตั้งแล้วที่ `C:\Users\theej\AppData\Local\Sideloadly\Sideloadly.exe`. ดับเบิลคลิก `START-IPHONE16PRO-TEST.cmd` เพื่อเปิด Sideloadly และเลือก IPA บน Windows (ยังไม่ติดตั้งอัตโนมัติ). คู่มือ: [IPHONE-16PRO-TEST.md](IPHONE-16PRO-TEST.md). **ยังไม่ติดตั้ง/ยืนยัน Animation บน iPhone 16 Pro จริง**
 
 ## 1) เป้าหมายและข้อกำหนดที่ตกลงกับผู้ใช้
 

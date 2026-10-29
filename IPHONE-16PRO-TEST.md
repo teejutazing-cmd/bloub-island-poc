@@ -18,6 +18,8 @@ Sideloadly is already installed locally at `C:\Users\theej\AppData\Local\Sideloa
 
 **NOTE:** The IPA is **unsigned**, intentionally. GitHub cannot sign it with the user's free Apple ID; Sideloadly does signing locally. Do **not** attempt to upload this iPhone IPA to Appetize, which uses a different Simulator ZIP. The iPhone app's Bundle ID is `com.bloub.island.poc` and iOS deployment target is 17.0.
 
+**Windows shortcut:** double-click `START-IPHONE16PRO-TEST.cmd` in the project root to launch the existing Sideloadly and select the verified IPA in Explorer. It never signs or installs automatically; you remain in control.
+
 ## Install once on iPhone 16 Pro (Windows, no Mac, free Apple ID)
 
 1. Connect the unlocked iPhone 16 Pro to the Windows laptop over USB, accept **Trust This Computer** on the phone. Launch the installed **Sideloadly** (not the web simulator).
