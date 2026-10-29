@@ -28,6 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p "$ARTIFACT_DIR"
           xcodebuild -project BloubIslandPOC.xcodeproj \
             -scheme BloubIsland -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
