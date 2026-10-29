@@ -1,5 +1,7 @@
 # Bloub Circle → Triangle — Original 2-Second Sprite Experiment (v4)
 
+> **Resume here:** [SESSION-HANDOFF.md](SESSION-HANDOFF.md) records all verified Bloub native iOS work, Windows paths, the working Appetize auto-deploy, CI evidence, limitations and a ready-to-copy new-session prompt. Appetize is **already connected**; do not set it up again without a specific reason.
+
 This project is an **offline iOS experiment**. No actual agents, servers, APNs, or paid Apple developer account.
 
 ## Original animation

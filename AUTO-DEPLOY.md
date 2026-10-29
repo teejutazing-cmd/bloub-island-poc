@@ -1,5 +1,7 @@
 # Bloub Appetize Auto-Deploy
 
+> **CONNECTED & VERIFIED:** 2026-10-29 — GitHub Actions secret `APPETIZE_API_TOKEN` is configured and [run #2](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40847983431) completed successfully, including Appetize upload. The steps below are for **recovery/reconfiguration only**. For resuming a session, read [SESSION-HANDOFF.md](SESSION-HANDOFF.md).
+
 This deploy pipeline publishes the **real native iOS Simulator .app** to Appetize, rather than an HTML mock-up or a signed physical-device IPA.
 
 ## One-time secure connection (required)

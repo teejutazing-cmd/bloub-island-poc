@@ -17,7 +17,7 @@ The XCUITest automation launches the actual Bloub app and runs a second scenario
 
 Apple Simulator builds are not device IPAs. `Bloub-Appetize-ARM64-Simulator.zip` is the correct artifact to upload to https://appetize.io/; the existing `BloubAvatarLab-v4-original-morph-verified.ipa` is only for Sideloadly / real iPhone.
 
-Appetize requires a separate account, which the user must connect/create themselves. No API key or paid plan is configured. Appetize runtime availability, Live Activities and Dynamic Island behavior need checking when first used.
+**Appetize is connected as of 2026-10-29:** the user confirmed the app runs in Appetize, and GitHub Actions auto-deploy succeeded (run [40847983431](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40847983431)). The API token is stored only as the GitHub Actions repository secret `APPETIZE_API_TOKEN`. No manual ZIP upload is required for subsequent source changes pushed to `main`. See [AUTO-DEPLOY.md](AUTO-DEPLOY.md) and [SESSION-HANDOFF.md](SESSION-HANDOFF.md). Live Activity frame pacing still requires testing on real hardware.
 
 ## Cost and limitations
 
