@@ -11,7 +11,7 @@ This is the **real Native SwiftUI/ActivityKit/WidgetKit app**, built and tested 
    - **Bloub-Appetize-ARM64-Simulator-Build**: `Bloub-Appetize-ARM64-Simulator.zip`, a *real* ARM64 Simulator `.app` bundled for Appetize.io.
 4. Inspect video and results on Windows. No physical iPhone installation is required to iterate here.
 
-The XCUITest automation launches the actual Bloub app and runs a second scenario that triggers the **original 24-frame circle-to-triangle** ActivityKit update after ten seconds, while the app is on SpringBoard. iOS may collapse its updates, so the test is an integration smoke check **not proof of 12 FPS rendering**.
+The 3 XCUITests launch the real Bloub app, open and close the Ultimate Lab, and exercise the **original 24-frame circle-to-triangle** ActivityKit update after ten seconds while the app is on SpringBoard. iOS may collapse its updates, so the test is an integration smoke check **not proof of 12 FPS rendering**.
 
 ## Appetize interactive use (optional)
 
@@ -21,14 +21,14 @@ Apple Simulator builds are not device IPAs. `Bloub-Appetize-ARM64-Simulator.zip`
 
 ## Cost and limitations
 
-Public GitHub repositories using **standard** macOS runners are not billed for GitHub Actions minutes under current GitHub policy. The Simulator-only workflow uses `macos-15-intel` and selects Xcode 16.4 where available (iPhone 16 Pro on iOS 18.5). Device IPA and Appetize Auto-Deploy remain on their previously verified macOS runner; it does not use paid large runners. Public repository source and build artifacts are visible to others: **do not commit secrets or private data**.
+Public GitHub repositories using **standard** macOS runners are not billed for GitHub Actions minutes under current GitHub policy. The Simulator-only workflow uses the verified `macos-26-intel` runner with Xcode 26.6, which passed 3/3 native UI tests. It prefers iPhone 16 Pro if available but may use iPhone 17 Pro and an older available runtime on GitHub runners. Device IPA and Appetize Auto-Deploy remain on their previously verified macOS runner; no paid large runners are needed. Public repository source and build artifacts are visible to others: **do not commit secrets or private data**.
 
 GitHub Actions is headless automation, not a live Mac desktop. Simulator results can differ from real iPhone behavior, and user interaction is more convenient using Appetize (subject to its own free-plan limits). The source app's regular behavior and the working v4 IPA are unchanged; the only new app activation is a simulator-only `--bloub-sim-morph` test argument.
 
 ## Infrastructure reliability / current UI test status
 
 - [Run 40863013746](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013746) **did not reach UI assertions** because the iPhone 17 Pro iOS 26.4 simulator boot exceeded 180s, and Xcode then reported no available test destination (exit 70). The Simulator app still compiled; the 38-effect Appetize Auto-Deploy and device IPA build passed separately.
-- Updated workflow runs on `macos-15-intel` + Xcode 16.4 (target iPhone 16 Pro / iOS 18.5), falling back when unavailable. It waits for boot with a clear failure if still unavailable, checks Xcode destinations and prints retained native test logs. Previous `macos-26-intel` / Xcode 26.6 runner repeatedly stalled during simulator boot. Do not mistake a CI infrastructure failure for app behavior validation.
+- **Recovery verified:** [run 40866761278](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40866761278) completed **3/3 native UI tests PASS** with `macos-26-intel`, Xcode 26.6, iPhone 17 Pro / iOS 26.2. It waits for full boot, checks Xcode destinations and retains logs. An alternate macOS 15 / Xcode 16.4 trial [40868009706](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40868009706) failed during Swift compiler type checking; this unverified runner was reverted. Do not confuse a Simulator runtime failure with a Bloub app failure.
 
 ## Maintenance
 
