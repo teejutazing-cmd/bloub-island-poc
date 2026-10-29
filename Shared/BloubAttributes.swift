@@ -11,6 +11,10 @@ struct BloubAttributes: ActivityAttributes {
         var morphFrame: Int
         // Discrete animation transition lab; nil preserves previous Live Activity state.
         var animationStyle: Int? = nil
+        // Live Activity alert experiment (0 idle, 1 armed, 2 urgent, 3 resolved).
+        // Optional to decode Live Activities left running by older Bloub versions.
+        var islandAlertStage: Int? = nil
+        var islandAlertTick: Int? = nil
     }
 
     var agentName: String

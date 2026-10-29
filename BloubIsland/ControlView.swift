@@ -19,7 +19,8 @@ final class LabNotificationDelegate: NSObject, UNUserNotificationCenterDelegate 
     func userNotificationCenter(_ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .list, .sound])
+        // This test build is Island-first. Never auto-present legacy in-app banners.
+        completionHandler([])
     }
 }
 
@@ -34,6 +35,8 @@ final class BloubLab: ObservableObject {
     @Published var notificationsAllowed = false
     @Published var attentionCountdown = 0
     @Published var islandStyle = 0
+    @Published var islandAlertStage = 0
+    @Published var islandAlertTick = 0
 
     private var activity: Activity<BloubAttributes>?
     private var pendingAttention: Task<Void, Never>?
@@ -47,6 +50,8 @@ final class BloubLab: ObservableObject {
             mood = BloubMood(rawValue: activity.content.state.mood) ?? .working
             pose = activity.content.state.pose
             morphFrame = activity.content.state.morphFrame
+            islandAlertStage = activity.content.state.islandAlertStage ?? 0
+            islandAlertTick = activity.content.state.islandAlertTick ?? 0
             message = "Live Activity resumed"
         }
     }
@@ -54,7 +59,7 @@ final class BloubLab: ObservableObject {
     private func makeContent() -> ActivityContent<BloubAttributes.ContentState> {
         ActivityContent(
             state: BloubAttributes.ContentState(
-                phase: mood.title,
+                phase: islandAlertStage == 2 ? "ATTENTION" : mood.title,
                 progress: progress,
                 mood: mood.rawValue,
                 detail: mood == .approval ? "Your decision needed" :
@@ -63,10 +68,13 @@ final class BloubLab: ObservableObject {
                         "Offline simulation",
                 pose: pose,
                 morphFrame: morphFrame,
-                animationStyle: islandStyle
+                animationStyle: islandStyle,
+                islandAlertStage: islandAlertStage,
+                islandAlertTick: islandAlertTick
             ),
-            staleDate: nil,
-            relevanceScore: mood == .approval || mood == .error ? 100 : 50
+            staleDate: Date.now.addingTimeInterval(90),
+            relevanceScore: islandAlertStage == 2 ? 100 :
+                            mood == .approval || mood == .error ? 90 : 50
         )
     }
 
@@ -81,6 +89,7 @@ final class BloubLab: ObservableObject {
         }
         progress = 10
         morphFrame = -1
+        islandAlertStage = 0
         do {
             activity = try Activity<BloubAttributes>.request(
                 attributes: BloubAttributes(agentName: "Bloub"),
@@ -135,9 +144,12 @@ final class BloubLab: ObservableObject {
     func refresh(alert: Bool = false) {
         guard let activity else { message = "Start Live Activity first"; return }
         let payload = makeContent()
+        // Apple documents an alertConfiguration update as the supported path
+        // for requesting an Expanded Live Activity in Dynamic Island. This is
+        // not a UNNotification banner. iOS still chooses the presentation.
         let config: AlertConfiguration? = alert
-            ? AlertConfiguration(title: "Bloub needs attention",
-                body: "Live Activity expanded alert demo", sound: .default)
+            ? AlertConfiguration(title: "Bloub · Dynamic Island alert",
+                body: "Check the expanded Bloub Live Activity", sound: .default)
             : nil
         Task {
             await activity.update(payload, alertConfiguration: config)
@@ -145,6 +157,99 @@ final class BloubLab: ObservableObject {
                 message = "Island alert sent — iOS decides presentation"
                 releaseBackgroundAttention()
             }
+        }
+    }
+
+    // PRIMARY outside-app test. Start the Activity while foregrounded, then
+    // swipe Home; an ActivityKit alert update follows after 8 seconds.
+    // No UNNotificationRequest is scheduled, so there is no standard banner.
+    func islandPopupAfterEightSeconds(_ outcome: BloubMood) {
+        // Clear older demo banners so only the Island update is observed.
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        cancelScheduledAttention()
+        if !running { start() }
+        guard activity != nil else { return }
+
+        mood = .working
+        progress = 45
+        pose = 0
+        morphFrame = -1
+        islandAlertStage = 1
+        islandAlertTick += 1
+        refresh()
+        attentionCountdown = 8
+        message = "ISLAND ONLY · swipe Home now. Live Activity alert in 8 seconds."
+
+        backgroundAttentionID = UIApplication.shared.beginBackgroundTask(
+            withName: "BloubExpandedIslandAlert",
+            expirationHandler: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.pendingAttention?.cancel()
+                    self.pendingAttention = nil
+                    self.attentionCountdown = 0
+                    self.message = "iOS ended background time; retry and swipe Home earlier"
+                    self.releaseBackgroundAttention()
+                }
+            }
+        )
+        pendingAttention = Task { [weak self] in
+            for remaining in stride(from: 7, through: 0, by: -1) {
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                guard let self, !Task.isCancelled else { return }
+                self.attentionCountdown = remaining
+            }
+            guard let self, !Task.isCancelled else { return }
+            self.mood = outcome
+            self.pose = outcome == .approval ? 4 : outcome == .error ? 3 : 2
+            self.progress = outcome == .recent ? 100 : 80
+            self.islandAlertStage = outcome == .recent ? 3 : 2
+            self.islandAlertTick += 1
+            self.pendingAttention = nil
+            self.refresh(alert: true)
+            self.message = "Sent ActivityKit ALERT; check Dynamic Island (not banner)"
+        }
+    }
+
+    // Control group: identical activity update with NO AlertConfiguration.
+    // Helps distinguish Island's normal content refresh from the true popup.
+    func islandSilentAfterEightSeconds() {
+        cancelScheduledAttention()
+        if !running { start() }
+        guard activity != nil else { return }
+        mood = .working
+        pose = 0
+        progress = 40
+        morphFrame = -1
+        islandAlertStage = 1
+        islandAlertTick += 1
+        refresh()
+        attentionCountdown = 8
+        message = "SILENT CONTROL · swipe Home. Only pose/progress should update."
+        backgroundAttentionID = UIApplication.shared.beginBackgroundTask(
+            withName: "BloubSilentIslandControl",
+            expirationHandler: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.pendingAttention?.cancel()
+                    self.pendingAttention = nil
+                    self.attentionCountdown = 0
+                    self.releaseBackgroundAttention()
+                }
+            }
+        )
+        pendingAttention = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(8)) } catch { return }
+            guard let self, !Task.isCancelled else { return }
+            self.mood = .recent
+            self.pose = 2
+            self.progress = 100
+            self.islandAlertStage = 3
+            self.islandAlertTick += 1
+            self.pendingAttention = nil
+            self.refresh(alert: false)
+            self.releaseBackgroundAttention()
+            self.message = "Silent ActivityKit update sent; should NOT request popup"
         }
     }
 
@@ -477,162 +582,155 @@ private struct LabButton: View {
 
 struct ControlView: View {
     @StateObject private var lab = BloubLab()
-    @State private var ultimateOpen = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
-                    VStack(spacing: 4) {
-                        Text("BLOUB / LAB").font(.caption.monospaced().weight(.bold))
-                            .tracking(3).foregroundStyle(.cyan)
-                        Text("Avatar playground").font(.largeTitle.weight(.bold))
-                        Text("100% offline · no agent connections")
-                            .font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 17) {
+                    HStack(spacing: 12) {
+                        BloubStill(mood: lab.mood, size: 48, frame: lab.pose)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("BLOUB / ISLAND ONLY")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.cyan)
+                            Text("Dynamic Island Alert Lab")
+                                .font(.title2.bold())
+                        }
                     }
-                    .padding(.top, 20)
+                    Text("OUTSIDE APP · iPhone 16 Pro · ActivityKit")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
 
-                    VStack(spacing: 5) {
-                        BloubMotion(mood: lab.mood)
-                            .frame(height: 205)
-                        Label(lab.mood.title, systemImage: lab.mood.symbol)
-                            .foregroundStyle(lab.mood.accent)
-                            .font(.title3.weight(.bold))
+                    Text("Test a popup from the Dynamic Island itself — NOT a notification banner.")
+                        .font(.subheadline.weight(.medium))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Circle().fill(lab.running ? .green : .orange)
+                                .frame(width: 9, height: 9)
+                            Text(lab.running ? "Live Activity active" : "Live Activity not started")
+                                .font(.caption.bold())
+                            Spacer()
+                            Text("ISLAND").font(.caption2.monospaced())
+                        }
+                        Button {
+                            lab.start()
+                        } label: {
+                            Label("START ISLAND", systemImage: "play.fill")
+                                .frame(maxWidth: .infinity, minHeight: 46)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("island-start")
+                    }
+                    .padding(14)
+                    .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("01 · EXPAND FROM DYNAMIC ISLAND")
+                            .font(.caption.monospaced().bold())
+                            .foregroundStyle(.orange)
+                        Text("Tap one test and immediately swipe Home. After 8 seconds the app sends an ActivityKit Live Activity alert with sound. It does not schedule UNNotification.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        islandButton("⚠️ APPROVAL POPUP · 8s", symbol: "exclamationmark.circle.fill",
+                                     id: "island-alert-approval", color: .orange) {
+                            lab.islandPopupAfterEightSeconds(.approval)
+                        }
+                        islandButton("🔴 ERROR POPUP · 8s", symbol: "xmark.octagon.fill",
+                                     id: "island-alert-error", color: .red) {
+                            lab.islandPopupAfterEightSeconds(.error)
+                        }
+                        islandButton("✅ COMPLETED POPUP · 8s", symbol: "checkmark.circle.fill",
+                                     id: "island-alert-complete", color: .green) {
+                            lab.islandPopupAfterEightSeconds(.recent)
+                        }
+                        if lab.attentionCountdown > 0 {
+                            Text("SWIPE HOME NOW · \(lab.attentionCountdown) SECONDS")
+                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.orange)
+                                .accessibilityIdentifier("island-countdown")
+                        }
+                    }
+                    .padding(14)
+                    .background(.white.opacity(0.065), in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("02 · COMPARE SYSTEM BEHAVIOR")
+                            .font(.caption.monospaced().bold())
+                            .foregroundStyle(.cyan)
+                        islandButton("SILENT ISLAND UPDATE · 8s", symbol: "waveform.path",
+                                     id: "island-alert-silent", color: .cyan) {
+                            lab.islandSilentAfterEightSeconds()
+                        }
+                        Text("Silent control only updates the pose/progress; no popup is requested.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        islandButton("INSTANT ACTIVITYKIT ALERT", symbol: "bolt.circle.fill",
+                                     id: "island-alert-immediate", color: .orange) {
+                            lab.attention()
+                        }
+                        islandButton("MORPH FRAMES · 10s", symbol: "circle.hexagongrid.fill",
+                                     id: "island-frames", color: .purple) {
+                            lab.morphInTwoSecondsAfterTenSeconds()
+                        }
+                        Text("Morph sends discrete sprite states; iOS may coalesce them. It is not a 12fps video.")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .padding(14)
+                    .background(.white.opacity(0.065), in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ACTIVITYKIT STATUS").font(.caption.monospaced().bold())
                         Text(lab.message)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                            .frame(minHeight: 28)
+                            .accessibilityIdentifier("island-status")
+                        Button("END LIVE ACTIVITY") { lab.finish() }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("island-end")
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 25))
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16))
 
-                    Button {
-                        ultimateOpen = true
-                    } label: {
-                        VStack(spacing: 5) {
-                            Label("OPEN BLOUB ULTIMATE ANIMATION LAB", systemImage: "wand.and.stars")
-                                .font(.headline)
-                            Text("38 native experiments · 4 modes · shaders · physics · 3D · System UI")
-                                .font(.caption2)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 64)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .accessibilityIdentifier("ultimate-open")
-
-                    LabPanel(heading: "01 · Avatar states", info: "Original Bloub 04 sprite animation · 6 local moods") {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 10) {
-                            ForEach(BloubMood.allCases) { choice in
-                                Button { lab.choose(choice) } label: {
-                                    VStack(spacing: 5) {
-                                        BloubStill(mood: choice, size: 48)
-                                        Text(choice.title).font(.caption2.weight(.medium))
-                                    }
-                                    .foregroundStyle(lab.mood == choice ? choice.accent : .white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        lab.mood == choice ? choice.accent.opacity(0.13) : Color.white.opacity(0.045),
-                                        in: RoundedRectangle(cornerRadius: 13)
-                                    )
-                                }.buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    LabPanel(heading: "02 · Dynamic Island", info: "Compact · Expanded · Minimal · Live Activity alert") {
-                        HStack {
-                            LabButton(label: "Start", symbol: "play.fill") { lab.start() }
-                            LabButton(label: "+20%", symbol: "plus.circle") { lab.advance() }
-                        }
-                        LabButton(label: "NEXT Bloub pose on Island", symbol: "figure.dance") {
-                            lab.nextIslandPose()
-                        }
-                        LabButton(label: "24-FRAME MORPH / 2s · Go Home in 10s", symbol: "sparkles") {
-                            lab.morphInTwoSecondsAfterTenSeconds()
-                        }
-                        LabButton(label: "5-pose Island parade in 10s", symbol: "play.rectangle.on.rectangle") {
-                            lab.poseParadeAfterTenSeconds()
-                        }
-                        LabButton(label: "Island alert in 10s · Go Home", symbol: "timer") {
-                            lab.attentionAfterTenSeconds()
-                        }
-                        if lab.attentionCountdown > 0 {
-                            Text("Alert in \(lab.attentionCountdown)s — swipe up to Home now")
-                                .font(.subheadline.monospacedDigit().weight(.bold))
-                                .foregroundStyle(.orange)
-                        }
-                        LabButton(label: "Instant alert (comparison)", symbol: "exclamationmark.bubble.fill") {
-                            lab.attention()
-                        }
-                        LabButton(label: "Stop Live Activity", symbol: "stop.fill") {
-                            lab.finish()
-                        }
-                        ProgressView(value: Double(lab.progress), total: 100)
-                            .tint(lab.mood.accent)
-                        Text("24-FRAME MORPH sends the original circle-to-triangle frames over 2 seconds, after a 10-second delay. iOS may merge rapid Live Activity updates. The expanded morph notification plays the complete 24-frame sequence locally.")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-
-                    LabPanel(heading: "03 · ANIMATED notification", info: "Long-press the delivered banner to open Bloub's animated custom notification view") {
-                        LabButton(label: "Enable Notifications", symbol: "bell.badge") {
-                            lab.requestNotifications()
-                        }
-                        LabButton(label: "MORPH notification · 24 frames / 2s", symbol: "film.stack") {
-                            lab.sendBanner(delay: 10, morph: true)
-                        }
-                        LabButton(label: "Banner in 10s · Go Home", symbol: "timer") {
-                            lab.sendBanner(delay: 10)
-                        }
-                        LabButton(label: "Instant banner (2s)", symbol: "paperplane.fill") {
-                            lab.sendBanner()
-                        }
-                        Text("For a guaranteed 2-second sprite playback test, tap MORPH notification, swipe Home, then LONG-PRESS the delivered banner. The compact banner cannot run custom frame animations.")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-
-                    LabPanel(heading: "04 · Lock Screen + Home", info: "Native Live Activity and Home / Lock Screen widgets") {
-                        HStack(spacing: 10) {
-                            Image(systemName: "lock.iphone")
-                            Text("Start Live Activity → lock the iPhone → check Lock Screen")
-                        }
-                        .font(.caption)
-                        HStack(spacing: 10) {
-                            Image(systemName: "square.grid.2x2")
-                            Text("Long-press Home Screen → Edit → Add Widget → Bloub")
-                        }
-                        .font(.caption)
-                        Text("Home/Lock Widgets rotate snapshots on a slow timeline. The Live Activity changes discrete poses when updated; no widget sprite loop is permitted.")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
+                    Text("iOS decides if/when the expanded Island appears. Allow Live Activities and sound in Settings. For genuine tests, record the screen while outside the app.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 38)
+                .padding(18)
             }
-            .background(
-                LinearGradient(colors: [Color(red: 0.035, green: 0.07, blue: 0.12), .black],
-                    startPoint: .top, endPoint: .bottom).ignoresSafeArea()
-            )
+            .background(Color(red: 0.025, green: 0.035, blue: 0.065).ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
-        .fullScreenCover(isPresented: $ultimateOpen) {
-            UltimateAnimationLab(lab: lab)
-        }
         .onAppear {
             #if targetEnvironment(simulator)
-            // Optional CI-only native simulator smoke test. Never runs on iPhone.
-            if ProcessInfo.processInfo.arguments.contains("--bloub-sim-morph") {
+            if ProcessInfo.processInfo.arguments.contains("--bloub-sim-island-popup") {
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(1))
-                    lab.morphInTwoSecondsAfterTenSeconds()
+                    lab.islandPopupAfterEightSeconds(.approval)
                 }
             }
             #endif
         }
+    }
+
+    private func islandButton(
+        _ title: String,
+        symbol: String,
+        id: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 46)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(color)
+        .accessibilityIdentifier(id)
     }
 }

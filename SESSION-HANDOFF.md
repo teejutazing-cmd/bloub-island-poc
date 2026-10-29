@@ -4,7 +4,11 @@
 >
 > **Bloub เป็น iOS app จริง** (SwiftUI + ActivityKit + WidgetKit + Notification Content Extension) ไม่ใช่เว็บหรือรูป mockup. ระบบ **GitHub Actions → Appetize auto-deploy ใช้งานได้แล้ว**. ยังไม่มี AI agent/backend จริง
 
-## อัปเดตล่าสุด — Ultimate Animation Lab (29 ต.ค. 2026)
+## อัปเดตล่าสุด — Dynamic Island-First / Outside-App Test (29 ต.ค. 2026)
+
+**ผู้ใช้ยืนยันให้เน้น Animation ภายนอกแอปเท่านั้น**: ต้องการให้แจ้งเตือน **ขยายจาก Dynamic Island ไม่ใช่ UNNotification Banner**. วิเคราะห์คลิปจริงพบว่า Notification Banner ลอยลงมาโดย Bloub ไม่ได้ขยับจาก Island. จึงแก้หน้าแรกเป็น Island-only Test: START ISLAND, APPROVAL/ERROR/COMPLETED POPUP หลัง 8s (ActivityKit update + AlertConfiguration + background task), SILENT UPDATE เป็น control group, และ MORPH TEST ที่อาจ drop frames. Dynamic Island Widget เพิ่ม label, scale, short spring/opacity/bounce animation แบบ system-managed. ลบปุ่ม Banner จากหน้าหลัก (legacy notification extension ยังอยู่ใน source). **ดู [ISLAND-ONLY-TEST.md](ISLAND-ONLY-TEST.md)**; ต้องรอผล CI Build ใหม่และตรวจบน iPhone 16 Pro จริงก่อนยืนยันว่ามีการเด้งจาก Island. iOS เป็นผู้ตัดสิน presentation เอง; ไม่รับประกันขยายทุกครั้ง.
+
+## อัปเดตก่อนหน้า — Ultimate Animation Lab (29 ต.ค. 2026)
 
 - เพิ่ม **Bloub Ultimate Animation Lab** ที่เปิดจากปุ่มในแอปเดิม: 38 selectable effects / 4 modes (**Showcase, Stress, Compare, System**). รายละเอียดครบที่ [ULTIMATE-LAB.md](ULTIMATE-LAB.md)
 - เพิ่ม **Metal shader (warp / color shift)**, **SpriteKit collisions/gravity**, **RealityKit non-AR sphere**, **CoreMotion gyro**, **Core Haptics**, **microphone audio meter**, สังเคราะห์เสียง WAV ภายในแอป, particles, gestures และ FPS monitor

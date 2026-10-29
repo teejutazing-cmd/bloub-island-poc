@@ -33,9 +33,13 @@ struct BloubLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BloubAttributes.self) { context in
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
+            let stage = context.state.islandAlertStage ?? 0
+            let tick = context.state.islandAlertTick ?? 0
             HStack(spacing: 14) {
                 BloubLiveAvatar(mood: mood, size: 76,
                                 pose: context.state.pose, morphFrame: context.state.morphFrame)
+                    .scaleEffect(stage == 2 ? 1.13 : 1)
+                    .animation(.spring(response: 0.55, dampingFraction: 0.62), value: tick)
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text("BLOUB").font(.caption.monospaced().weight(.bold)).tracking(2)
@@ -44,8 +48,12 @@ struct BloubLiveActivityWidget: Widget {
                             .font(.caption.monospacedDigit().weight(.bold))
                             .foregroundStyle(mood.accent)
                     }
-                    Text(context.state.phase).font(.headline)
-                    Text(context.state.detail).font(.caption2).lineLimit(2)
+                    Text(stage == 2 ? "⚠️ ISLAND ALERT" : stage == 3 ? "✅ TASK COMPLETE" : context.state.phase)
+                        .font(.headline).foregroundStyle(stage == 2 ? mood.accent : .primary)
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut(duration: 0.45), value: tick)
+                    Text(stage == 2 ? "Bloub needs your attention" : context.state.detail)
+                        .font(.caption2).lineLimit(2)
                         .foregroundStyle(.secondary)
                     ProgressView(value: Double(context.state.progress), total: 100)
                         .tint(mood.accent)
@@ -58,12 +66,19 @@ struct BloubLiveActivityWidget: Widget {
         } dynamicIsland: { context in
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
             let style = context.state.animationStyle ?? 0
+            let stage = context.state.islandAlertStage ?? 0
+            let tick = context.state.islandAlertTick ?? 0
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
-                        BloubLiveAvatar(mood: mood, size: 34,
+                        BloubLiveAvatar(mood: mood, size: stage == 2 ? 48 : 36,
                                         pose: context.state.pose, morphFrame: context.state.morphFrame)
-                        Text("Bloub").font(.headline.weight(.semibold))
+                            .scaleEffect(stage == 2 ? 1.12 : 1)
+                            .animation(.spring(response: 0.48, dampingFraction: 0.5), value: tick)
+                        Text(stage == 2 ? "ALERT" : "Bloub")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(stage == 2 ? mood.accent : .primary)
+                            .contentTransition(.opacity)
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -72,15 +87,30 @@ struct BloubLiveActivityWidget: Widget {
                         .foregroundStyle(mood.accent)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(context.state.morphFrame >= 0 ? "● BLOUB MORPH · 24 ORIGINAL FRAMES" :
-                         style > 0 ? "● TRANSITION TEST \(style + 1)/6 · \(context.state.detail)" :
-                         mood == .approval ? "● YOUR ATTENTION NEEDED" : context.state.detail)
+                    Text(stage == 2 ? "⚠ BLOUB NEEDS YOUR ATTENTION" :
+                         stage == 3 ? "✓ BLOUB FINISHED THE TASK" :
+                         context.state.morphFrame >= 0 ? "● BLOUB MORPH · SYSTEM FRAMES" :
+                         style > 0 ? "● TRANSITION TEST \(style + 1)/6" :
+                         context.state.detail)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(mood == .approval ? .orange : .secondary)
                         .lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 8) {
+                        if stage >= 2 {
+                            HStack(spacing: 8) {
+                                Image(systemName: stage == 2 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                                    .foregroundStyle(mood.accent)
+                                    .symbolEffect(.bounce, value: tick)
+                                Text(stage == 2 ? "EXPANDED ISLAND ALERT" : "TASK COMPLETED")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(mood.accent)
+                                    .contentTransition(.opacity)
+                            }
+                            .padding(.vertical, 3)
+                            .animation(.spring(response: 0.45, dampingFraction: 0.7), value: tick)
+                        }
                         IslandStatus(mood: mood, progress: context.state.progress)
                         ProgressView(value: Double(context.state.progress), total: 100)
                             .tint(mood.accent)
@@ -96,8 +126,10 @@ struct BloubLiveActivityWidget: Widget {
             } compactLeading: {
                 BloubLiveAvatar(mood: mood, size: 24,
                                 pose: context.state.pose, morphFrame: context.state.morphFrame)
+                    .scaleEffect(stage == 2 ? 1.12 : 1)
+                    .animation(.easeOut(duration: 0.48), value: tick)
             } compactTrailing: {
-                Text(style == 5 ? "!" : "\(context.state.progress)%")
+                Text(stage == 2 ? "!" : style == 5 ? "!" : "\(context.state.progress)%")
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(mood.accent)
                     .contentTransition(style.isMultiple(of: 2) ? .numericText() : .opacity)
@@ -105,7 +137,7 @@ struct BloubLiveActivityWidget: Widget {
                 BloubLiveAvatar(mood: mood, size: 23,
                                 pose: context.state.pose, morphFrame: context.state.morphFrame)
             }
-            .keylineTint(mood.accent)
+            .keylineTint(stage == 2 ? .orange : mood.accent)
         }
     }
 }
