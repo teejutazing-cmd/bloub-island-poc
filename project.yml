@@ -88,6 +88,10 @@ targets:
         PRODUCT_NAME: BloubNotificationContent
         APPLICATION_EXTENSION_API_ONLY: YES
 schemes:
+  BloubIsland:
+    build:
+      targets:
+        BloubIsland: all
   BloubSimulatorLab:
     build:
       targets:
