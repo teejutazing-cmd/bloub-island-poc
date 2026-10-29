@@ -51,6 +51,19 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.widget
         PRODUCT_NAME: BloubIslandWidget
+  BloubUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - path: BloubUITests
+    dependencies:
+      - target: BloubIsland
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: BloubIsland
   BloubNotificationContent:
     type: app-extension
     platform: iOS
@@ -74,3 +87,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.bloub.island.poc.notification
         PRODUCT_NAME: BloubNotificationContent
         APPLICATION_EXTENSION_API_ONLY: YES
+schemes:
+  BloubSimulatorLab:
+    build:
+      targets:
+        BloubIsland: all
+    test:
+      targets:
+        - BloubUITests

@@ -589,5 +589,16 @@ struct ControlView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            #if targetEnvironment(simulator)
+            // Optional CI-only native simulator smoke test. Never runs on iPhone.
+            if ProcessInfo.processInfo.arguments.contains("--bloub-sim-morph") {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1))
+                    lab.morphInTwoSecondsAfterTenSeconds()
+                }
+            }
+            #endif
+        }
     }
 }

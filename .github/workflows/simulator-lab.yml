@@ -1,0 +1,119 @@
+name: Bloub Native iOS Simulator Lab
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/simulator-lab.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    name: Native iPhone Simulator · UI tests + video + Appetize ZIP
+    runs-on: macos-26-intel
+    timeout-minutes: 45
+    env:
+      DERIVED: ${{ runner.temp }}/BloubSimDerived
+      ARTIFACT_DIR: ${{ github.workspace }}/sim-artifacts
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate native Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Choose available iPhone with Dynamic Island
+        id: device
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcrun simctl list devices available
+          DEVICE_ID=$(xcrun simctl list -j devices available | python3 -c '
+          import json,sys
+          data=json.load(sys.stdin)
+          devices=[d for group in data["devices"].values() for d in group
+                   if d.get("isAvailable") and d.get("udid") and "iPhone" in d.get("name","")]
+          priorities=["iPhone 17 Pro", "iPhone 16 Pro", "iPhone 15 Pro",
+                      "iPhone 14 Pro", "iPhone 17", "iPhone 16", "iPhone 15"]
+          for name in priorities:
+              eligible=[d for d in devices if d["name"]==name]
+              if eligible:
+                  print(eligible[0]["udid"])
+                  break
+          else:
+              if not devices:
+                  raise SystemExit("No iOS Simulator runtime / iPhone available")
+              print(devices[0]["udid"])
+          ')
+          echo "udid=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          mkdir -p "$ARTIFACT_DIR"
+          xcrun simctl status_bar "$DEVICE_ID" override --time '9:41' --batteryState charged --batteryLevel 100 || true
+      - name: Build + run native SwiftUI UI tests on iPhone Simulator
+        id: test
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p "$ARTIFACT_DIR"
+          xcrun simctl io "${{ steps.device.outputs.udid }}" recordVideo --codec=h264 --force "$ARTIFACT_DIR/Bloub-native-simulator.mp4" > "$ARTIFACT_DIR/recording.log" 2>&1 &
+          VIDEO_PID=$!
+          sleep 3
+          xcodebuild -project BloubIslandPOC.xcodeproj \
+            -scheme BloubSimulatorLab -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.device.outputs.udid }}" \
+            -derivedDataPath "$DERIVED" \
+            -resultBundlePath "$ARTIFACT_DIR/BloubUITests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO test \
+            > "$ARTIFACT_DIR/xcodebuild-test.log" 2>&1
+          CODE=$?
+          kill -INT "$VIDEO_PID" 2>/dev/null || true
+          wait "$VIDEO_PID" 2>/dev/null || true
+          cat "$ARTIFACT_DIR/xcodebuild-test.log" | tail -110
+          echo "test_exit=$CODE" >> "$GITHUB_OUTPUT"
+          exit "$CODE"
+      - name: Capture final simulator screenshot
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$ARTIFACT_DIR"
+          xcrun simctl io "${{ steps.device.outputs.udid }}" screenshot "$ARTIFACT_DIR/Bloub-final-screen.png" || true
+      - name: Build ARM64 Simulator app for Appetize
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project BloubIslandPOC.xcodeproj \
+            -scheme BloubIsland -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/BloubAppetizeDerived" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build \
+            > "$ARTIFACT_DIR/xcodebuild-appetize.log" 2>&1 || {
+              tail -110 "$ARTIFACT_DIR/xcodebuild-appetize.log"
+              exit 1
+            }
+          APP="$RUNNER_TEMP/BloubAppetizeDerived/Build/Products/Debug-iphonesimulator/BloubIsland.app"
+          test -d "$APP/PlugIns/BloubIslandWidget.appex"
+          test -d "$APP/PlugIns/BloubNotificationContent.appex"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist"
+          cd "$(dirname "$APP")"
+          zip -qr "$ARTIFACT_DIR/Bloub-Appetize-ARM64-Simulator.zip" "$(basename "$APP")"
+          unzip -t "$ARTIFACT_DIR/Bloub-Appetize-ARM64-Simulator.zip" | tail -1
+      - name: Upload videos, screenshots, XCTest results and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloub-Native-Simulator-Evidence
+          path: sim-artifacts/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload Appetize-ready unsigned iOS Simulator build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloub-Appetize-ARM64-Simulator-Build
+          path: sim-artifacts/Bloub-Appetize-ARM64-Simulator.zip
+          if-no-files-found: error
+          retention-days: 7
