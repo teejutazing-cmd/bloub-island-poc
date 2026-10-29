@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/simulator-lab.yml'
+      - 'BloubUITests/**'
 
 permissions:
   contents: read

@@ -8,6 +8,9 @@ struct BloubWidgetBundle: WidgetBundle {
         BloubLiveActivityWidget()
         BloubHomeWidget()
         BloubLockWidget()
+        if #available(iOS 18.0, *) {
+            BloubLaunchControlWidget()
+        }
     }
 }
 
@@ -125,10 +128,11 @@ struct StaticBloubProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<StaticBloubEntry>) -> Void) {
         // Slow avatar pose rotation. WidgetKit owns refresh scheduling and can defer entries.
         let moods: [BloubMood] = [.working, .recent, .sleeping, .unknown]
+        let manualPose = UserDefaults.standard.integer(forKey: "BloubUltimate.widgetPose")
         let now = Date()
         let entries = (0..<4).map { index in
             StaticBloubEntry(date: now.addingTimeInterval(Double(index) * 20 * 60),
-                             mood: moods[index], pose: index + 1)
+                             mood: moods[index], pose: (index + 1 + manualPose) % 5)
         }
         completion(Timeline(entries: entries, policy: .atEnd))
     }
@@ -150,6 +154,13 @@ private struct HomeBloubView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
+                Button(intent: CycleBloubPoseIntent()) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.title3)
+                        .foregroundStyle(.cyan)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Next Bloub pose")
             }
             .padding(12)
             .containerBackground(Color(red: 0.035, green: 0.07, blue: 0.11), for: .widget)
@@ -158,6 +169,11 @@ private struct HomeBloubView: View {
                 BloubStill(mood: entry.mood, size: 94, frame: entry.pose)
                 Text("BLOUB").font(.caption.monospaced().bold()).tracking(1.5)
                 Text("OFFLINE LAB").font(.system(size: 9)).foregroundStyle(.secondary)
+                Button(intent: CycleBloubPoseIntent()) {
+                    Label("NEXT POSE", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .buttonStyle(.plain)
             }
             .containerBackground(Color(red: 0.035, green: 0.07, blue: 0.11), for: .widget)
         }

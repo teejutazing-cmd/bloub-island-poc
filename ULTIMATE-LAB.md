@@ -26,7 +26,9 @@ Not every experiment is a separate rendering engine. Several intentionally use d
 
 - Six discrete **Island transition styles** triggered by `cycleIslandStyle`, stored as `BloubAttributes.ContentState.animationStyle`. The WidgetKit UI uses text/pose/progress/content transitions. The system has final control of timing and individual frame rendering.
 - Expanded notification `bloubFX`: `glow`, `spin`, `shake`, `pulse`, `ripple`, `glitch`, and `morph`; implemented with UIKit `CAAnimation` and/or original 24-frame images. The collapsed banner is **not** custom-animated.
-- Existing Home Screen / Lock Screen widgets and StandBy Live Activity view remain system-scheduled. They do **not** support continuous arbitrary animations. Control Center Control Widgets and Action Button shortcuts are not yet connected, nor are real agents.
+- Existing Home Screen / Lock Screen widgets and StandBy Live Activity view remain system-scheduled. They do **not** support continuous arbitrary animations. Controls may open Bloub on iOS 18+, but cannot show arbitrary custom animation on the system control itself. No actual agents are connected.
+- **Interactive Home Widget**: NEXT POSE calls `CycleBloubPoseIntent` (App Intents / iOS 17+) and triggers a WidgetKit snapshot refresh. This stores state in the widget extension's local defaults; no external service.
+- **Control Center / Lock Screen Control / Action Button** (iOS 18+): `BloubLaunchControlWidget` with `OpenBloubUltimateIntent` opens Bloub using a standard system symbol, not a freely animated control.
 - In the performance overlay, **CADisplayLink FPS** is the app's main-loop sampling, not a hardware GPU profiler. "Long gaps" counts frame intervals over 37ms. Appetize stream lag can differ from the FPS on its simulator.
 
 ## Source files
@@ -51,7 +53,7 @@ Do not install the experimental build on the physical iPhone 16 Pro until tested
 ## Future work / known limitations
 
 - iPhone 16 Pro preferred for the headless simulator, with fallbacks if not installed on GitHub macOS image.
-- Add an actual interactive Control Center Control Widget / App Intent if the deployment target and runner SDK support it.
+- Validate iOS 18 Control Center / Action Button open intent and interactive Home Widget on the physical iPhone 16 Pro; simulator support is limited.
 - Broaden native UI tests, inspect the actual Dynamic Island UI, and measure hardware thermal and animation throttling.
 - No API keys in source; Appetize secret stays in GitHub Actions. No agent backend, push notifications or external soundtracks are connected.
 

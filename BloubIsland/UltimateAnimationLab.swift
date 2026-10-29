@@ -517,7 +517,7 @@ struct UltimateAnimationLab: View {
             Text("Long-press Home → Edit → Add Widget → Bloub. On Lock Screen choose Bloub circular/rectangular. Widget timelines are system-scheduled, NOT full-time loops.")
                 .font(.caption2)
             Text("CONTROL CENTER / ACTION BUTTON").font(.caption.monospaced().bold()).foregroundStyle(.cyan)
-            Text("The current app has no Control Widget/App Intent yet. Opening the app via system shortcut is possible, but custom control-surface animation is not.")
+            Text("On iOS 18+, add Bloub Lab from Control Center → Add Control, or map it to the Action Button in Settings. This launches Bloub; iOS controls the icon animation.")
                 .font(.caption2).foregroundStyle(.orange)
             Text("Live Activities use iOS-owned transitions (max ~2s). Dynamic Island cannot be forced to display 24 individual frames. Reduced-luminance Always-On can suppress animation.")
                 .font(.caption2).foregroundStyle(.orange)
