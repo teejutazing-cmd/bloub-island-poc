@@ -11,7 +11,7 @@ D:\Projects\Pilot-Planning\Pilot-Code\workspaces\bloub-island-poc-20261028
 
 | File | Purpose |
 | --- | --- |
-| `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa` | **Use this** new 2,016,970-byte native iPhone build. SHA-256 `04751ea214826f13168c412f49c1b22f2d70120dfcb47179e417b871ae809f8b` verified against GitHub device artifact [run 40863013726](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40863013726). |
+| `artifacts/BloubUltimateLab-iPhone16Pro-unsigned.ipa` | **Use this FINAL** 2,016,974-byte native iPhone build. SHA-256 `f7d8fd1f4043f4d66d4b382142262448100a0c277e2a820c032755ce3fc70848` verified against the **latest successfully built GitHub device artifact** [run 40876807338](https://github.com/teejutazing-cmd/bloub-island-poc/actions/runs/40876807338), artifact `BloubUltimateLab-iPhone-IPA`. The verified IPA was copied back to this Windows path. |
 | `artifacts/BloubAvatarLab-v4-original-morph-verified.ipa` | **Keep** known-working v4 IPA for recovery. Never overwrite or delete as part of this test. |
 
 Sideloadly is already installed locally at `C:\Users\theej\AppData\Local\Sideloadly\Sideloadly.exe` (checked on Windows).
@@ -46,7 +46,7 @@ The same signing identity and bundle ID will typically update the old sideloaded
 
 | Test | Status |
 | --- | --- |
-| Device IPA produced by Xcode 26.6, bundled extensions, source assets | PASS (CI run 40863013726; IPA extracted and verified) |
+| Device IPA produced by Xcode 26.6, bundled extensions, source assets | PASS (latest CI run 40876807338; IPA extracted, rechecked and copied to Windows) |
 | Appetize Auto-Deploy (Simulator app build) | PASS (run 40863013737) |
 | Native Simulator XCUITest — app launch, background morph, Ultimate Lab screen | PASS 3/3 (run 40866761278) |
 | Real iPhone 16 Pro: successful Sideloadly signing/installation | **NOT YET TESTED** |
