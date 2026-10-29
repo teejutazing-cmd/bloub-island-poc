@@ -1,0 +1,121 @@
+name: Bloub Auto-Deploy to Appetize
+
+# The existing iPhone IPA build and on-device installation are unaffected.
+# Push main: publish a new *simulator* build once an Appetize token is configured.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-appetize.yml'
+      - 'project.yml'
+      - 'BloubIsland/**'
+      - 'BloubIslandWidget/**'
+      - 'BloubNotificationContent/**'
+      - 'Shared/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bloub-appetize-main
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    name: Check Appetize token (do not reveal it)
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.auth.outputs.configured }}
+    steps:
+      - id: auth
+        shell: bash
+        env:
+          APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+        run: |
+          if [[ -n "$APPETIZE_API_TOKEN" ]]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+            echo 'Appetize API token configured; simulator build and auto-deploy enabled.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo 'Appetize auto-deploy is staged but inactive: set repository secret APPETIZE_API_TOKEN, then run this workflow once or push a source change.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  build-and-deploy:
+    name: Build native Simulator app and update Appetize
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
+    runs-on: macos-26-intel
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate native Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Build iOS Simulator app (ARM64; not an iPhone IPA)
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project BloubIslandPOC.xcodeproj \
+            -scheme BloubIsland \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/BloubAutoDeploy" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build \
+            > "$RUNNER_TEMP/bloub-autodeploy-build.log" 2>&1 || {
+              tail -120 "$RUNNER_TEMP/bloub-autodeploy-build.log"
+              exit 1
+            }
+      - name: Validate real app, bundle ID and both extensions
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/BloubAutoDeploy/Build/Products/Debug-iphonesimulator/BloubIsland.app"
+          APP="$APP" python3 - <<'PY'
+          import os, plistlib
+          from pathlib import Path
+          app = Path(os.environ["APP"])
+          assert app.is_dir(), "Missing iOS Simulator .app"
+          host = plistlib.loads((app / "Info.plist").read_bytes())
+          assert host["CFBundleIdentifier"] == "com.bloub.island.poc", "Unexpected bundle identifier"
+          assert host.get("NSSupportsLiveActivities") is True
+          for name, expected in (
+              ("BloubIslandWidget", "com.apple.widgetkit-extension"),
+              ("BloubNotificationContent", "com.apple.usernotifications.content-extension"),
+          ):
+              ext = app / "PlugIns" / f"{name}.appex"
+              info = plistlib.loads((ext / "Info.plist").read_bytes())
+              assert info.get("CFBundleDisplayName"), f"{name}: missing display name"
+              assert info["NSExtension"]["NSExtensionPointIdentifier"] == expected
+          assert (app / "Assets.car").is_file()
+          print("PASS: Bloub native Simulator build, both extensions and Live Activities")
+          PY
+          cd "$(dirname "$APP")"
+          zip -qr "$GITHUB_WORKSPACE/Bloub-Appetize-Ready.zip" "$(basename "$APP")"
+          unzip -t "$GITHUB_WORKSPACE/Bloub-Appetize-Ready.zip" | tail -1
+      - name: Preserve deployable Simulator ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloub-AutoDeploy-Simulator-APP
+          path: Bloub-Appetize-Ready.zip
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload new build to existing Bloub Appetize app group
+        id: upload
+        uses: appetizeio/github-action-appetize@v1.1.0
+        with:
+          apiToken: ${{ secrets.APPETIZE_API_TOKEN }}
+          platform: ios
+          appFile: Bloub-Appetize-Ready.zip
+          fileType: zip
+          note: Bloub native simulator · ${{ github.sha }}
+        # No publicKey: a NEW build is created, grouped by the same iOS Bundle ID.
+        # This keeps the stable /apps/ios/com.bloub.island.poc URL and build history.
+      - name: Report Appetize preview link
+        shell: bash
+        run: |
+          echo '### Bloub auto-deployed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Open a **new** Appetize session on the current build:' >> "$GITHUB_STEP_SUMMARY"
+          echo 'https://appetize.io/apps/ios/com.bloub.island.poc' >> "$GITHUB_STEP_SUMMARY"
