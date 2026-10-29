@@ -21,6 +21,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Install optional Metal toolchain for shader experiments
+        run: |
+          xcodebuild -downloadComponent metalToolchain
+          xcrun --find metal
       - name: Generate native Xcode project
         run: xcodegen generate --spec project.yml
       - name: Build ARM64 Simulator app for Appetize
