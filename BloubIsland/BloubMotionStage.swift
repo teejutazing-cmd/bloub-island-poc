@@ -233,9 +233,9 @@ struct BloubMotionStage: View {
                 let seed = Double(i) * 1.61803398875
                 let radius = Double((i * 73) % 120) * (explode ? (0.2 + abs(sin(t * 2))) : 1)
                 let phase = seed * 6.28 + t * (0.7 + Double(i % 7) * 0.09)
-                let cx = Double(bounds.midX) + cos(phase) * radius +
+                let cx = Double(bounds.width) * 0.5 + cos(phase) * radius +
                     (explode ? Double(burst % 7) * 3 : 0)
-                let cy = Double(bounds.midY) + sin(phase) * radius * 0.8
+                let cy = Double(bounds.height) * 0.5 + sin(phase) * radius * 0.8
                 let diameter = CGFloat(1.4 + Double(i % 5) * 0.8)
                 let rect = CGRect(x: cx, y: cy, width: Double(diameter), height: Double(diameter))
                 context.fill(Path(ellipseIn: rect),
