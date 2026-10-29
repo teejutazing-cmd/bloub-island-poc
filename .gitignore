@@ -1,4 +1,6 @@
 artifacts/
+simulator-lab/
+.sim-derived/
 DerivedData/
 build/
 *.ipa
