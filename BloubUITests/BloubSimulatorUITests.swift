@@ -12,6 +12,22 @@ final class BloubSimulatorUITests: XCTestCase {
         add(attachment)
     }
 
+    func testUltimateLabOpensWithRealEffectControls() {
+        let app = XCUIApplication()
+        app.launch()
+        let button = app.buttons["ultimate-open"]
+        XCTAssertTrue(button.waitForExistence(timeout: 20), "Ultimate lab launch button missing")
+        button.tap()
+        XCTAssertTrue(app.navigationBars["Bloub Ultimate Lab"].waitForExistence(timeout: 15),
+                      "Native Ultimate Lab must open")
+        XCTAssertTrue(app.staticTexts["38 effects · 4 test modes · iPhone 16 Pro target"].exists)
+        capture("04-ultimate-lab-running")
+        let close = app.buttons["ultimate-close"]
+        XCTAssertTrue(close.exists)
+        close.tap()
+        XCTAssertTrue(app.staticTexts["Avatar playground"].waitForExistence(timeout: 10))
+    }
+
     func testNativeAppLaunches() {
         let app = XCUIApplication()
         app.launch()

@@ -60,6 +60,8 @@ final class BloubNotificationViewController: UIViewController, UNNotificationCon
 
         sprite.stopAnimating()
         sprite.animationImages = nil
+        sprite.layer.removeAllAnimations()
+        let fx = notification.request.content.userInfo["bloubFX"] as? String ?? "default"
         let isMorph = notification.request.content.userInfo["bloubMorph"] as? Bool ?? false
         status.text = isMorph ? "CIRCLE → TRIANGLE · 24 REAL FRAMES / 2s" : "ORIGINAL SPRITE · 144 FRAMES / 12s"
         guard let sourceURL = Bundle.main.url(forResource: "bloub-04-\(mood)", withExtension: "png"),
@@ -85,6 +87,63 @@ final class BloubNotificationViewController: UIViewController, UNNotificationCon
         sprite.animationDuration = isMorph ? 2 : 12
         sprite.animationRepeatCount = isMorph ? 1 : 0
         sprite.startAnimating()
+        // This is real UIKit/Core Animation in the expanded notification only.
+        // The standard iOS notification banner remains system-owned.
+        applyFX(fx)
+    }
+
+    private func applyFX(_ effect: String) {
+        let animation = CABasicAnimation()
+        animation.duration = 0.65
+        animation.autoreverses = true
+        animation.repeatCount = 5
+        sprite.layer.shadowColor = UIColor.systemRed.cgColor
+        sprite.layer.shadowRadius = 20
+        sprite.layer.shadowOffset = .zero
+
+        switch effect {
+        case "glow":
+            sprite.layer.shadowOpacity = 1
+            animation.keyPath = "shadowRadius"
+            animation.fromValue = 4
+            animation.toValue = 48
+        case "spin":
+            animation.keyPath = "transform.rotation.z"
+            animation.duration = 2
+            animation.autoreverses = false
+            animation.fromValue = 0
+            animation.toValue = Double.pi * 2
+            animation.repeatCount = 2
+        case "pulse":
+            animation.keyPath = "transform.scale"
+            animation.fromValue = 0.75
+            animation.toValue = 1.33
+        case "shake":
+            animation.keyPath = "transform.translation.x"
+            animation.fromValue = -18
+            animation.toValue = 18
+            animation.duration = 0.11
+            animation.repeatCount = 18
+        case "ripple":
+            animation.keyPath = "transform.scale"
+            animation.fromValue = 0.85
+            animation.toValue = 1.4
+            sprite.layer.shadowOpacity = 1
+            sprite.layer.shadowRadius = 35
+        case "glitch":
+            let glitch = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            glitch.values = [0, 18, -24, 9, -12, 0]
+            glitch.keyTimes = [0, 0.2, 0.38, 0.61, 0.84, 1] as [NSNumber]
+            glitch.duration = 0.3
+            glitch.repeatCount = 10
+            sprite.layer.add(glitch, forKey: "bloub-glitch")
+            status.text = "GLITCH · CORE ANIMATION"
+            return
+        default:
+            return
+        }
+        sprite.layer.add(animation, forKey: "bloub-\(effect)")
+        status.text = "BLOUB FX · \(effect.uppercased()) · EXPANDED ONLY"
     }
 
     override func viewWillDisappear(_ animated: Bool) {

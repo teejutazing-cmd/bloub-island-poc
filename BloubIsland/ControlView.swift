@@ -33,6 +33,7 @@ final class BloubLab: ObservableObject {
     @Published var running = false
     @Published var notificationsAllowed = false
     @Published var attentionCountdown = 0
+    @Published var islandStyle = 0
 
     private var activity: Activity<BloubAttributes>?
     private var pendingAttention: Task<Void, Never>?
@@ -61,7 +62,8 @@ final class BloubLab: ObservableObject {
                         mood == .recent ? "Task finished" :
                         "Offline simulation",
                 pose: pose,
-                morphFrame: morphFrame
+                morphFrame: morphFrame,
+                animationStyle: islandStyle
             ),
             staleDate: nil,
             relevanceScore: mood == .approval || mood == .error ? 100 : 50
@@ -98,6 +100,18 @@ final class BloubLab: ObservableObject {
         morphFrame = -1
         message = "\(selection.title) · pose \(pose) selected"
         if running { refresh() }
+    }
+
+    // Six legal state-change presentations; iOS controls actual Island transitions.
+    func cycleIslandStyle(_ style: Int) {
+        islandStyle = max(0, min(5, style))
+        if !running { start() }
+        guard running else { return }
+        pose = (pose + 1) % 5
+        progress = min(100, 10 + islandStyle * 18)
+        morphFrame = -1
+        message = "Island transition style \(islandStyle + 1)/6 sent; iOS owns timing"
+        refresh()
     }
 
     func nextIslandPose() {
@@ -324,7 +338,7 @@ final class BloubLab: ObservableObject {
         }
     }
 
-    func sendBanner(delay: TimeInterval = 2, morph: Bool = false) {
+    func sendBanner(delay: TimeInterval = 2, morph: Bool = false, effect: String = "default") {
         Task {
             let center = UNUserNotificationCenter.current()
             let approved: Bool
@@ -345,7 +359,8 @@ final class BloubLab: ObservableObject {
             content.sound = .default
             content.categoryIdentifier = "BLOUB_DEMO"
             content.userInfo = ["bloubMood": morph ? "working" : mood.rawValue,
-                                "bloubMorph": morph]
+                                "bloubMorph": morph,
+                                "bloubFX": effect]
 
             // Add a real Bloub avatar image for expanded notification previews.
             if let image = Bundle.main.url(forResource: "bloub-notification", withExtension: "png") {
@@ -462,6 +477,7 @@ private struct LabButton: View {
 
 struct ControlView: View {
     @StateObject private var lab = BloubLab()
+    @State private var ultimateOpen = false
 
     var body: some View {
         NavigationStack {
@@ -492,6 +508,21 @@ struct ControlView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(Color.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 25))
+
+                    Button {
+                        ultimateOpen = true
+                    } label: {
+                        VStack(spacing: 5) {
+                            Label("OPEN BLOUB ULTIMATE ANIMATION LAB", systemImage: "wand.and.stars")
+                                .font(.headline)
+                            Text("38 native experiments · 4 modes · shaders · physics · 3D · System UI")
+                                .font(.caption2)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .accessibilityIdentifier("ultimate-open")
 
                     LabPanel(heading: "01 · Avatar states", info: "Original Bloub 04 sprite animation · 6 local moods") {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 10) {
@@ -589,6 +620,9 @@ struct ControlView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
+        .fullScreenCover(isPresented: $ultimateOpen) {
+            UltimateAnimationLab(lab: lab)
+        }
         .onAppear {
             #if targetEnvironment(simulator)
             // Optional CI-only native simulator smoke test. Never runs on iPhone.

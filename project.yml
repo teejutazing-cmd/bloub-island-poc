@@ -19,6 +19,7 @@ targets:
       properties:
         CFBundleDisplayName: Bloub Avatar Lab
         NSSupportsLiveActivities: true
+        NSMicrophoneUsageDescription: Bloub Lab uses the microphone only when you explicitly start its audio-reactive animation experiment.
         LSRequiresIPhoneOS: true
         CFBundleURLTypes:
           - CFBundleURLName: com.bloub.island.poc

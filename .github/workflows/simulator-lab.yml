@@ -65,7 +65,7 @@ jobs:
           data=json.load(sys.stdin)
           devices=[d for group in data["devices"].values() for d in group
                    if d.get("isAvailable") and d.get("udid") and "iPhone" in d.get("name","")]
-          priorities=["iPhone 17 Pro", "iPhone 16 Pro", "iPhone 15 Pro",
+          priorities=["iPhone 16 Pro", "iPhone 17 Pro", "iPhone 15 Pro",
                       "iPhone 14 Pro", "iPhone 17", "iPhone 16", "iPhone 15"]
           for name in priorities:
               eligible=[d for d in devices if d["name"]==name]

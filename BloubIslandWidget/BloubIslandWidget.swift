@@ -54,6 +54,7 @@ struct BloubLiveActivityWidget: Widget {
             .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             let mood = BloubMood(rawValue: context.state.mood) ?? .working
+            let style = context.state.animationStyle ?? 0
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
@@ -69,6 +70,7 @@ struct BloubLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.state.morphFrame >= 0 ? "● BLOUB MORPH · 24 ORIGINAL FRAMES" :
+                         style > 0 ? "● TRANSITION TEST \(style + 1)/6 · \(context.state.detail)" :
                          mood == .approval ? "● YOUR ATTENTION NEEDED" : context.state.detail)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(mood == .approval ? .orange : .secondary)
@@ -79,6 +81,12 @@ struct BloubLiveActivityWidget: Widget {
                         IslandStatus(mood: mood, progress: context.state.progress)
                         ProgressView(value: Double(context.state.progress), total: 100)
                             .tint(mood.accent)
+                        if style > 0 {
+                            Text("LIVE TRANSITION STYLE \(style + 1)/6")
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(mood.accent)
+                                .transition(style.isMultiple(of: 2) ? .opacity : .move(edge: .trailing))
+                        }
                     }
                     .padding(.horizontal, 8)
                 }
@@ -86,10 +94,10 @@ struct BloubLiveActivityWidget: Widget {
                 BloubLiveAvatar(mood: mood, size: 24,
                                 pose: context.state.pose, morphFrame: context.state.morphFrame)
             } compactTrailing: {
-                Text("\(context.state.progress)%")
+                Text(style == 5 ? "!" : "\(context.state.progress)%")
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(mood.accent)
-                    .contentTransition(.numericText())
+                    .contentTransition(style.isMultiple(of: 2) ? .numericText() : .opacity)
             } minimal: {
                 BloubLiveAvatar(mood: mood, size: 23,
                                 pose: context.state.pose, morphFrame: context.state.morphFrame)
